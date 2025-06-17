@@ -2,7 +2,20 @@
 import { defineComponent, ref } from "vue";
 import LeftTreePanel from "./LeftTreePanel.vue";
 import RightTablePanel, { TableColumn } from "./RightTablePanel.vue";
-import { Document, Folder, Setting, User, Bell } from "@element-plus/icons-vue";
+import {
+  Document,
+  Folder,
+  Setting,
+  User,
+  Bell,
+  RefreshLeft,
+  RefreshRight,
+} from "@element-plus/icons-vue";
+
+interface Command {
+  execute(): void;
+  undo(): void;
+}
 
 export default defineComponent({
   name: "MainLayout",
@@ -84,6 +97,61 @@ export default defineComponent({
     const activeTab = ref("files");
     const activeMenu = ref("1");
 
+    const history: Command[] = [];
+    const historyIndex = ref(-1);
+    const canUndo = ref(false);
+    const canRedo = ref(false);
+
+    const updateHistoryState = () => {
+      canUndo.value = historyIndex.value >= 0;
+      canRedo.value = historyIndex.value < history.length - 1;
+    };
+
+    const executeCommand = (command: Command) => {
+      // 如果当前不在历史记录末尾，删除当前位置之后的所有记录
+      if (historyIndex.value < history.length - 1) {
+        history.splice(historyIndex.value + 1);
+      }
+
+      command.execute();
+      history.push(command);
+      historyIndex.value = history.length - 1;
+      updateHistoryState();
+    };
+
+    const handleUndo = () => {
+      if (canUndo.value) {
+        const command = history[historyIndex.value];
+        command.undo();
+        historyIndex.value--;
+        updateHistoryState();
+      }
+    };
+
+    const handleRedo = () => {
+      if (canRedo.value) {
+        historyIndex.value++;
+        const command = history[historyIndex.value];
+        command.execute();
+        updateHistoryState();
+      }
+    };
+
+    // 示例：添加一个文件操作命令
+    const addFileCommand = (file: any) => {
+      const command: Command = {
+        execute: () => {
+          // 添加文件的具体实现
+          console.log("Adding file:", file);
+        },
+        undo: () => {
+          // 撤销添加文件的具体实现
+          console.log("Removing file:", file);
+        },
+      };
+      executeCommand(command);
+    };
+
     const handleNodeSelected = (node: any) => {
       console.log("Node selected in main layout:", node);
       // Here you can add logic to filter the table based on the selected node
@@ -139,11 +207,17 @@ export default defineComponent({
       handleNodeSelected,
       handleCommand,
       handleMenuSelect,
+      handleUndo,
+      handleRedo,
+      canUndo,
+      canRedo,
       Document,
       Folder,
       Setting,
       User,
       Bell,
+      RefreshLeft,
+      RefreshRight,
     };
   },
 });
@@ -154,6 +228,18 @@ export default defineComponent({
     <header class="main-header">
       <div class="header-left">
         <h1 class="app-title">ModuForge Demo</h1>
+        <div class="history-buttons">
+          <el-tooltip content="回退" placement="bottom">
+            <el-button :disabled="!canUndo" circle @click="handleUndo">
+              <el-icon><RefreshLeft /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip content="重做" placement="bottom">
+            <el-button :disabled="!canRedo" circle @click="handleRedo">
+              <el-icon><RefreshRight /></el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
         <el-menu
           mode="horizontal"
           :ellipsis="false"
@@ -275,6 +361,20 @@ export default defineComponent({
   font-size: 20px;
   color: #303133;
   font-weight: 600;
+}
+
+.history-buttons {
+  display: flex;
+  gap: 8px;
+  margin-right: 8px;
+}
+
+.history-buttons .el-button {
+  padding: 8px;
+}
+
+.history-buttons .el-icon {
+  font-size: 16px;
 }
 
 .main-menu {
