@@ -2,6 +2,7 @@
 import { defineComponent, ref } from "vue";
 import LeftTreePanel from "./LeftTreePanel.vue";
 import RightTablePanel, { TableColumn } from "./RightTablePanel.vue";
+import { Document, Folder, Setting, User, Bell } from "@element-plus/icons-vue";
 
 export default defineComponent({
   name: "MainLayout",
@@ -81,17 +82,68 @@ export default defineComponent({
       },
     ]);
     const activeTab = ref("files");
+    const activeMenu = ref("1");
 
     const handleNodeSelected = (node: any) => {
       console.log("Node selected in main layout:", node);
       // Here you can add logic to filter the table based on the selected node
     };
 
+    const handleCommand = (command: string) => {
+      console.log("Menu command:", command);
+      // 处理菜单命令
+    };
+
+    const handleMenuSelect = (index: string) => {
+      console.log("Menu selected:", index);
+      // 处理菜单选择
+      switch (index) {
+        case "1-1":
+          // 处理所有文件
+          break;
+        case "1-2":
+          // 处理最近文件
+          break;
+        case "1-3":
+          // 处理已共享
+          break;
+        case "1-4":
+          // 处理回收站
+          break;
+        case "2-1":
+          // 处理我的项目
+          break;
+        case "2-2":
+          // 处理团队项目
+          break;
+        case "2-3":
+          // 处理项目模板
+          break;
+        case "3-1":
+          // 处理个人设置
+          break;
+        case "3-2":
+          // 处理团队设置
+          break;
+        case "3-3":
+          // 处理系统设置
+          break;
+      }
+    };
+
     return {
       treeData,
       panes,
       activeTab,
+      activeMenu,
       handleNodeSelected,
+      handleCommand,
+      handleMenuSelect,
+      Document,
+      Folder,
+      Setting,
+      User,
+      Bell,
     };
   },
 });
@@ -99,24 +151,89 @@ export default defineComponent({
 
 <template>
   <div class="main-layout">
-    <div class="left-panel">
-      <LeftTreePanel :tree-data="treeData" @node-selected="handleNodeSelected" />
-    </div>
-    <div class="resizer"></div>
-    <div class="right-panel">
-      <el-tabs v-model="activeTab">
-        <el-tab-pane
-          v-for="pane in panes"
-          :key="pane.name"
-          :label="pane.label"
-          :name="pane.name"
+    <header class="main-header">
+      <div class="header-left">
+        <h1 class="app-title">ModuForge Demo</h1>
+        <el-menu
+          mode="horizontal"
+          :ellipsis="false"
+          v-model="activeMenu"
+          class="main-menu"
+          @select="handleMenuSelect"
         >
-          <RightTablePanel
-            :table-data="pane.tableData"
-            :table-columns="pane.tableColumns"
-          />
-        </el-tab-pane>
-      </el-tabs>
+          <el-sub-menu index="1">
+            <template #title>
+              <el-icon><Document /></el-icon>
+              <span>文件</span>
+            </template>
+            <el-menu-item index="1-1">所有文件</el-menu-item>
+            <el-menu-item index="1-2">最近文件</el-menu-item>
+            <el-menu-item index="1-3">已共享</el-menu-item>
+            <el-menu-item index="1-4">回收站</el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="2">
+            <template #title>
+              <el-icon><Folder /></el-icon>
+              <span>项目</span>
+            </template>
+            <el-menu-item index="2-1">我的项目</el-menu-item>
+            <el-menu-item index="2-2">团队项目</el-menu-item>
+            <el-menu-item index="2-3">项目模板</el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="3">
+            <template #title>
+              <el-icon><Setting /></el-icon>
+              <span>设置</span>
+            </template>
+            <el-menu-item index="3-1">个人设置</el-menu-item>
+            <el-menu-item index="3-2">团队设置</el-menu-item>
+            <el-menu-item index="3-3">系统设置</el-menu-item>
+          </el-sub-menu>
+        </el-menu>
+      </div>
+      <div class="header-right">
+        <el-dropdown @command="handleCommand">
+          <el-button type="primary" plain>
+            <el-icon><User /></el-icon>
+            用户
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="profile">个人信息</el-dropdown-item>
+              <el-dropdown-item command="settings">账号设置</el-dropdown-item>
+              <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <el-badge :value="3" class="notification-badge">
+          <el-button circle>
+            <el-icon><Bell /></el-icon>
+          </el-button>
+        </el-badge>
+      </div>
+    </header>
+    <div class="main-content">
+      <div class="left-panel">
+        <LeftTreePanel :tree-data="treeData" @node-selected="handleNodeSelected" />
+      </div>
+      <div class="resizer"></div>
+      <div class="right-panel">
+        <el-tabs v-model="activeTab">
+          <el-tab-pane
+            v-for="pane in panes"
+            :key="pane.name"
+            :label="pane.label"
+            :name="pane.name"
+          >
+            <RightTablePanel
+              :table-data="pane.tableData"
+              :table-columns="pane.tableColumns"
+            />
+          </el-tab-pane>
+        </el-tabs>
+      </div>
     </div>
   </div>
 </template>
@@ -124,11 +241,61 @@ export default defineComponent({
 <style scoped>
 .main-layout {
   display: flex;
+  flex-direction: column;
   height: 100vh;
-  width: 100%;
+  width: 100vw;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
     Arial, sans-serif;
   background-color: #f5f7fa;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.main-header {
+  height: 60px;
+  background-color: #fff;
+  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 20px;
+  color: #303133;
+  font-weight: 600;
+}
+
+.main-menu {
+  border-bottom: none;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.notification-badge {
+  margin-left: 8px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  height: calc(100vh - 60px);
 }
 
 .left-panel {
@@ -138,6 +305,8 @@ export default defineComponent({
   border-right: 1px solid #e4e7ed;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 .resizer {
@@ -152,10 +321,40 @@ export default defineComponent({
 }
 
 .right-panel {
-  flex-grow: 1;
+  flex: 1;
   background-color: #fff;
   display: flex;
   flex-direction: column;
   padding: 16px;
+  height: 100%;
+  overflow: auto;
+}
+
+:deep(.el-menu--horizontal) {
+  border-bottom: none;
+}
+
+:deep(.el-menu-item),
+:deep(.el-sub-menu__title) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:deep(.el-menu-item .el-icon),
+:deep(.el-sub-menu__title .el-icon) {
+  margin-right: 4px;
+}
+
+:deep(.el-sub-menu .el-sub-menu__title) {
+  padding: 0 20px;
+}
+
+:deep(.el-menu--popup) {
+  min-width: 120px;
+}
+
+:deep(.el-menu--popup .el-menu-item) {
+  padding: 8px 20px;
 }
 </style>
