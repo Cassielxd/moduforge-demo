@@ -143,7 +143,7 @@ export default defineComponent({
 <template>
   <div class="tree-panel-container">
     <div class="panel-header">
-      <h3>文件树</h3>
+      <h3>工程项目</h3>
       <el-button type="primary" size="small" @click="handleTreeCommand('add')">
         <el-icon><Plus /></el-icon>
       </el-button>
