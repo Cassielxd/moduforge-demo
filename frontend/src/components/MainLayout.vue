@@ -306,7 +306,7 @@ export default defineComponent({
       </div>
       <div class="resizer"></div>
       <div class="right-panel">
-        <el-tabs v-model="activeTab">
+        <el-tabs v-model="activeTab" type="border-card">
           <el-tab-pane
             v-for="pane in panes"
             :key="pane.name"

@@ -228,7 +228,6 @@ export default defineComponent({
 <template>
   <div class="table-panel-container">
     <div class="panel-header">
-      <h3>文件列表</h3>
       <el-button type="primary" size="small" @click="openAddDialog">
         <el-icon><Plus /></el-icon>
       </el-button>
