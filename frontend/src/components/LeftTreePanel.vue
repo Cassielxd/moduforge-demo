@@ -336,6 +336,35 @@ export default defineComponent({
 
 :deep(.el-tree-node__content) {
   padding: 4px 0;
+  border-radius: 4px;
+  margin: 2px 0;
+  transition: all 0.2s;
+}
+
+:deep(.el-tree-node__content:hover) {
+  background-color: #f5f7fa;
+}
+
+:deep(.el-tree-node.is-current > .el-tree-node__content) {
+  background-color: #409eff;
+  color: #fff;
+  font-weight: 500;
+}
+
+:deep(.el-tree-node.is-current > .el-tree-node__content:hover) {
+  background-color: #337ecc;
+}
+
+:deep(.el-tree-node.is-current .el-tree-node__expand-icon) {
+  color: #fff;
+}
+
+:deep(.el-tree-node.is-current .remark-icon) {
+  color: #fff;
+}
+
+:deep(.el-tree-node.is-current .remark-icon:hover) {
+  color: #f0f9ff;
 }
 
 .custom-context-menu {
@@ -368,6 +397,7 @@ export default defineComponent({
   margin-left: 4px;
   cursor: pointer;
   transition: color 0.2s;
+  flex-shrink: 0;
 }
 
 .remark-icon:hover {
