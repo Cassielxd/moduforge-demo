@@ -161,11 +161,11 @@ export default defineComponent({
 
 <template>
   <div class="table-panel-container">
-    <div class="panel-header">
+    <!-- div class="panel-header">
       <el-button type="primary" size="small" @click="handleAddTableRow">
         <el-icon><Plus /></el-icon>
       </el-button>
-    </div>
+    </div> -->
     <!-- 新增和子项添加弹窗移至父组件处理 -->
     <el-dialog v-model="colorDialogVisible" title="选择颜色" width="300px">
       <el-color-picker v-model="colorValue" />
