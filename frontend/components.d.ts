@@ -27,11 +27,15 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTabPane: typeof import('element-plus/es')['ElTabPane']
     ElTabs: typeof import('element-plus/es')['ElTabs']
+    ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElTree: typeof import('element-plus/es')['ElTree']
     LeftTreePanel: typeof import('./src/components/LeftTreePanel.vue')['default']
     MainLayout: typeof import('./src/components/MainLayout.vue')['default']
+    MultiTabView: typeof import('./src/components/MultiTabView.vue')['default']
     RightTablePanel: typeof import('./src/components/RightTablePanel.vue')['default']
+    RouterLink: typeof import('vue-router')['RouterLink']
+    RouterView: typeof import('vue-router')['RouterView']
     TreeTableLayout: typeof import('./src/components/TreeTableLayout.vue')['default']
   }
 }

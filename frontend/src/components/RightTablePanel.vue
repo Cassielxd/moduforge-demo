@@ -6,7 +6,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 
 // --- Data Interfaces ---
 interface TableItem {
-  id: number;
+  id: number | string;
   [key: string]: any;
 }
 
@@ -30,8 +30,19 @@ export default defineComponent({
       type: Array as PropType<TableColumn[]>,
       required: true,
     },
+    isTreeTable: {
+      type: Boolean,
+      default: false,
+    },
   },
-  emits: ["update:tableData"],
+  emits: [
+    "update:tableData",
+    "add-row",
+    "add-child",
+    "edit-row",
+    "delete-row",
+    "copy-row",
+  ],
   setup(props, { emit }) {
     const localTableData = ref<TableItem[]>(props.tableData);
 
@@ -39,15 +50,10 @@ export default defineComponent({
     const tableContextMenuVisible = ref(false);
     const tableContextMenuPosition = reactive({ x: 0, y: 0 });
     const currentTableItem = ref<TableItem | null>(null);
-    const editingTableCell = ref<{ id: number; field: string } | null>(null);
+    const editingTableCell = ref<{ id: number | string; field: string } | null>(null);
 
-    // 新增弹窗相关
-    const addDialogVisible = ref(false);
-    const addForm = ref({ name: "", date: "", address: "" });
-
-    // 添加子项弹窗相关
-    const addChildDialogVisible = ref(false);
-    const addChildForm = ref({ name: "", date: "", address: "" });
+    // 弹窗相关 - 保留用于颜色选择
+    // 新增和子项添加逻辑移至父组件
 
     // 颜色选择相关
     const colorDialogVisible = ref(false);
@@ -69,50 +75,26 @@ export default defineComponent({
 
     const handleTableCommand = (command: string) => {
       if (!currentTableItem.value) return;
+
       switch (command) {
         case "edit":
-          // Placeholder for edit logic if needed from context menu
+          emit("edit-row", currentTableItem.value);
           break;
         case "delete":
-          ElMessageBox.confirm("确定要删除这一行吗？", "警告", {
-            confirmButtonText: "确定",
-            cancelButtonText: "取消",
-            type: "warning",
-          })
-            .then(() => {
-              const index = localTableData.value.findIndex(
-                (item) => item.id === currentTableItem.value?.id
-              );
-              localTableData.value.splice(index, 1);
-              ElMessage.success("删除成功");
-              emit("update:tableData", localTableData.value);
-            })
-            .catch(() => {});
+          emit("delete-row", currentTableItem.value);
           break;
         case "copy":
-          const newItem = {
-            ...currentTableItem.value,
-            id: Date.now(),
-            name: `${currentTableItem.value.name} (复制)`,
-          };
-          localTableData.value.push(newItem);
-          ElMessage.success("复制成功");
-          emit("update:tableData", localTableData.value);
+          emit("copy-row", currentTableItem.value);
+          break;
+        case "add-child":
+          emit("add-child", currentTableItem.value);
           break;
       }
       tableContextMenuVisible.value = false;
     };
 
     const handleAddTableRow = () => {
-      const newRow: TableItem = {
-        id: Date.now(),
-        date: new Date().toISOString().split("T")[0],
-        name: "新文件",
-        address: "请输入描述",
-      };
-      localTableData.value.push(newRow);
-      ElMessage.success("添加成功");
-      emit("update:tableData", localTableData.value);
+      emit("add-row");
     };
 
     const handleTableCellDblClick = (row: TableItem, field: string) => {
@@ -123,47 +105,7 @@ export default defineComponent({
       emit("update:tableData", localTableData.value);
     };
 
-    const openAddDialog = () => {
-      addForm.value = { name: "", date: "", address: "" };
-      addDialogVisible.value = true;
-    };
-
-    const handleAddSubmit = () => {
-      const newRow: TableItem = {
-        id: Date.now(),
-        ...addForm.value,
-      };
-      localTableData.value.push(newRow);
-      ElMessage.success("添加成功");
-      emit("update:tableData", localTableData.value);
-      addDialogVisible.value = false;
-    };
-
-    const openAddChildDialog = () => {
-      addChildForm.value = { name: "", date: "", address: "" };
-      addChildDialogVisible.value = true;
-      tableContextMenuVisible.value = false;
-    };
-
-    const handleAddChildSubmit = () => {
-      const newChild = {
-        id: Date.now(),
-        ...addChildForm.value,
-      };
-      if (currentTableItem.value && !currentTableItem.value.children) {
-        currentTableItem.value.children = [];
-      }
-      if (currentTableItem.value) {
-        currentTableItem.value.children.push(newChild);
-        ElMessage.success("添加子项成功");
-        emit("update:tableData", localTableData.value);
-        // 自动展开父节点
-        if (tableRef.value) {
-          tableRef.value.toggleRowExpansion(currentTableItem.value, true);
-        }
-      }
-      addChildDialogVisible.value = false;
-    };
+    // 移除内部的新增逻辑，由父组件处理
 
     const openColorDialog = () => {
       colorValue.value = currentTableItem.value?.color || "#409EFF";
@@ -207,14 +149,6 @@ export default defineComponent({
       editingTableCell,
       handleTableCellDblClick,
       finishEditTableCell,
-      addDialogVisible,
-      addForm,
-      openAddDialog,
-      handleAddSubmit,
-      addChildDialogVisible,
-      addChildForm,
-      openAddChildDialog,
-      handleAddChildSubmit,
       colorDialogVisible,
       colorValue,
       openColorDialog,
@@ -228,34 +162,11 @@ export default defineComponent({
 <template>
   <div class="table-panel-container">
     <div class="panel-header">
-      <el-button type="primary" size="small" @click="openAddDialog">
+      <el-button type="primary" size="small" @click="handleAddTableRow">
         <el-icon><Plus /></el-icon>
       </el-button>
     </div>
-    <el-dialog v-model="addDialogVisible" title="新增行" width="400px">
-      <el-form :model="addForm">
-        <el-form-item label="名称"><el-input v-model="addForm.name" /></el-form-item>
-        <el-form-item label="日期"><el-input v-model="addForm.date" /></el-form-item>
-        <el-form-item label="描述"><el-input v-model="addForm.address" /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="addDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleAddSubmit">确定</el-button>
-      </template>
-    </el-dialog>
-    <el-dialog v-model="addChildDialogVisible" title="添加子项" width="400px">
-      <el-form :model="addChildForm">
-        <el-form-item label="名称"><el-input v-model="addChildForm.name" /></el-form-item>
-        <el-form-item label="日期"><el-input v-model="addChildForm.date" /></el-form-item>
-        <el-form-item label="描述"
-          ><el-input v-model="addChildForm.address"
-        /></el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="addChildDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleAddChildSubmit">确定</el-button>
-      </template>
-    </el-dialog>
+    <!-- 新增和子项添加弹窗移至父组件处理 -->
     <el-dialog v-model="colorDialogVisible" title="选择颜色" width="300px">
       <el-color-picker v-model="colorValue" />
       <template #footer>
@@ -271,8 +182,15 @@ export default defineComponent({
       border
       @row-contextmenu="handleTableContextMenu"
       :row-style="tableRowStyle"
+      :tree-props="isTreeTable ? { children: 'children' } : undefined"
+      :default-expand-all="isTreeTable"
     >
-      <el-table-column width="50" />
+      <!-- 展开收起箭头列（仅树形表格，让Element Plus自动处理） -->
+      <el-table-column v-if="isTreeTable" width="50" label="" />
+
+      <!-- 普通表格的空白列 -->
+      <el-table-column v-if="!isTreeTable" width="50" />
+
       <el-table-column
         v-for="col in tableColumns"
         :key="col.prop"
@@ -299,9 +217,33 @@ export default defineComponent({
             />
           </template>
           <template v-else>
-            <span @dblclick="handleTableCellDblClick(scope.row, col.prop)">{{
-              scope.row[col.prop]
-            }}</span>
+            <div v-if="isTreeTable && col.prop === 'name'" class="tree-name-cell">
+              <el-icon v-if="scope.row.type === 'folder'" class="folder-icon">
+                <Folder />
+              </el-icon>
+              <el-icon v-else class="file-icon">
+                <Document />
+              </el-icon>
+              <span @dblclick="handleTableCellDblClick(scope.row, col.prop)">
+                {{ scope.row[col.prop] }}
+              </span>
+            </div>
+            <div v-else-if="isTreeTable && col.prop === 'type'" class="tree-type-cell">
+              <el-tag
+                :type="scope.row.type === 'folder' ? 'warning' : 'info'"
+                size="small"
+              >
+                {{ scope.row.type === "folder" ? "文件夹" : "文件" }}
+              </el-tag>
+            </div>
+            <span v-else @dblclick="handleTableCellDblClick(scope.row, col.prop)">
+              {{
+                scope.row[col.prop] ||
+                (col.prop === "size" && scope.row.type === "folder"
+                  ? "-"
+                  : scope.row[col.prop])
+              }}
+            </span>
           </template>
         </template>
       </el-table-column>
@@ -325,7 +267,7 @@ export default defineComponent({
       <div class="context-menu-item" @click="handleTableCommand('copy')">
         <el-icon><CopyDocument /></el-icon> 复制
       </div>
-      <div class="context-menu-item" @click="openAddChildDialog">
+      <div class="context-menu-item" @click="handleTableCommand('add-child')">
         <el-icon><Plus /></el-icon> 添加子项
       </div>
       <div class="context-menu-item" @click="openColorDialog">
@@ -388,5 +330,26 @@ export default defineComponent({
 }
 :deep(.el-table__row.colored-row) {
   border-left: 4px solid var(--row-color);
+}
+
+.tree-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tree-type-cell {
+  display: flex;
+  align-items: center;
+}
+
+.folder-icon {
+  color: #e6a23c;
+  font-size: 16px;
+}
+
+.file-icon {
+  color: #909399;
+  font-size: 16px;
 }
 </style>

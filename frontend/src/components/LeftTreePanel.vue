@@ -32,6 +32,8 @@ export default defineComponent({
     const selectedTreeNodeId = ref<number | undefined>(undefined);
     const remarkDialogVisible = ref(false);
     const remarkContent = ref("");
+    const addNodeDialogVisible = ref(false);
+    const newNodeName = ref("");
 
     const handleTreeContextMenu = (event: MouseEvent, data: Tree, node: any) => {
       event.preventDefault();
@@ -50,20 +52,8 @@ export default defineComponent({
 
     const handleTreeCommand = (command: string) => {
       if (command === "add") {
-        const newNode = {
-          id: Date.now(),
-          label: "新节点",
-        };
-        if (currentTreeItem.value) {
-          if (!currentTreeItem.value.children) {
-            currentTreeItem.value.children = [];
-          }
-          currentTreeItem.value.children.push(newNode);
-        } else {
-          localTreeData.value.push(newNode);
-        }
-        ElMessage.success("添加成功");
-        emit("update:treeData", localTreeData.value);
+        newNodeName.value = "";
+        addNodeDialogVisible.value = true;
         return;
       }
       if (!currentTreeItem.value || !currentTreeNode.value) return;
@@ -105,6 +95,39 @@ export default defineComponent({
       remarkDialogVisible.value = false;
     };
 
+    const handleAddNodeConfirm = () => {
+      if (!newNodeName.value.trim()) {
+        ElMessage.warning("请输入节点名称");
+        return;
+      }
+
+      const newNode = {
+        id: Date.now(),
+        label: newNodeName.value.trim(),
+      };
+
+      if (currentTreeItem.value) {
+        if (!currentTreeItem.value.children) {
+          currentTreeItem.value.children = [];
+        }
+        currentTreeItem.value.children.push(newNode);
+      } else {
+        localTreeData.value.push(newNode);
+      }
+
+      // 设置新节点为当前选中节点
+      selectedTreeNodeId.value = newNode.id;
+      currentTreeItem.value = newNode;
+
+      // 通知父组件节点已选中
+      emit("node-selected", newNode);
+
+      ElMessage.success("添加成功");
+      emit("update:treeData", localTreeData.value);
+      addNodeDialogVisible.value = false;
+      newNodeName.value = "";
+    };
+
     const handleTreeNodeDblClick = (data: Tree) => {
       editingTreeNodeId.value = data.id;
     };
@@ -135,6 +158,9 @@ export default defineComponent({
       remarkDialogVisible,
       remarkContent,
       handleRemarkConfirm,
+      addNodeDialogVisible,
+      newNodeName,
+      handleAddNodeConfirm,
     };
   },
 });
@@ -210,6 +236,31 @@ export default defineComponent({
         <el-icon><Delete /></el-icon> 删除
       </div>
     </div>
+
+    <!-- Add Node Dialog -->
+    <el-dialog
+      v-model="addNodeDialogVisible"
+      title="添加新节点"
+      width="30%"
+      :close-on-click-modal="false"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="节点名称">
+          <el-input
+            v-model="newNodeName"
+            placeholder="请输入节点名称"
+            autofocus
+            @keyup.enter="handleAddNodeConfirm"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addNodeDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleAddNodeConfirm">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- Remark Dialog -->
     <el-dialog
