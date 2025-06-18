@@ -54,6 +54,9 @@ const handleMenuSelect = (key: string) => {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  overflow: hidden;
 }
 .main-header {
   height: 60px;

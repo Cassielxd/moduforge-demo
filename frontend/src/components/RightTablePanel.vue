@@ -43,7 +43,7 @@ export default defineComponent({
     "delete-row",
     "copy-row",
   ],
-  setup(props, { emit }) {
+  setup(props, { emit, expose }) {
     const localTableData = ref<TableItem[]>(props.tableData);
 
     const tableRef = ref<InstanceType<typeof ElTable>>();
@@ -51,9 +51,7 @@ export default defineComponent({
     const tableContextMenuPosition = reactive({ x: 0, y: 0 });
     const currentTableItem = ref<TableItem | null>(null);
     const editingTableCell = ref<{ id: number | string; field: string } | null>(null);
-
-    // 弹窗相关 - 保留用于颜色选择
-    // 新增和子项添加逻辑移至父组件
+    const currentRowKey = ref<string | number | null>(null);
 
     // 颜色选择相关
     const colorDialogVisible = ref(false);
@@ -77,6 +75,9 @@ export default defineComponent({
       if (!currentTableItem.value) return;
 
       switch (command) {
+        case "add-row":
+          emit("add-row", currentTableItem.value);
+          break;
         case "edit":
           emit("edit-row", currentTableItem.value);
           break;
@@ -100,12 +101,11 @@ export default defineComponent({
     const handleTableCellDblClick = (row: TableItem, field: string) => {
       editingTableCell.value = { id: row.id, field };
     };
+
     const finishEditTableCell = () => {
       editingTableCell.value = null;
       emit("update:tableData", localTableData.value);
     };
-
-    // 移除内部的新增逻辑，由父组件处理
 
     const openColorDialog = () => {
       colorValue.value = currentTableItem.value?.color || "#409EFF";
@@ -133,9 +133,72 @@ export default defineComponent({
       return {};
     };
 
-    // 调试输出，帮助排查表格渲染问题
-    console.log("RightTablePanel tableData:", localTableData.value);
-    console.log("RightTablePanel tableColumns:", props.tableColumns);
+    // 设置当前选中行的方法，供父组件调用
+    const setCurrentRow = (rowId: string | number) => {
+      currentRowKey.value = rowId;
+      // 使用nextTick确保DOM更新后再设置选中行
+      setTimeout(() => {
+        if (tableRef.value) {
+          // 找到对应的行数据
+          const findRowById = (
+            data: TableItem[],
+            targetId: string | number
+          ): TableItem | null => {
+            for (const item of data) {
+              if (item.id === targetId) {
+                return item;
+              }
+              if (item.children) {
+                const found = findRowById(item.children, targetId);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+
+          const targetRow = findRowById(localTableData.value, rowId);
+          if (targetRow) {
+            tableRef.value.setCurrentRow(targetRow);
+          }
+        }
+      }, 100);
+    };
+
+    // 展开指定行的方法，供父组件调用（用于添加子项后展开父节点）
+    const expandRow = (rowId: string | number) => {
+      setTimeout(() => {
+        if (tableRef.value && props.isTreeTable) {
+          // 找到对应的行数据
+          const findRowById = (
+            data: TableItem[],
+            targetId: string | number
+          ): TableItem | null => {
+            for (const item of data) {
+              if (item.id === targetId) {
+                return item;
+              }
+              if (item.children) {
+                const found = findRowById(item.children, targetId);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+
+          const targetRow = findRowById(localTableData.value, rowId);
+          if (targetRow) {
+            // 展开该行
+            tableRef.value.toggleRowExpansion(targetRow, true);
+          }
+        }
+      }, 100);
+    };
+
+    // 暴露方法给父组件
+    expose({
+      setCurrentRow,
+      expandRow,
+    });
 
     return {
       localTableData,
@@ -154,6 +217,9 @@ export default defineComponent({
       openColorDialog,
       handleColorSubmit,
       tableRowStyle,
+      currentRowKey,
+      setCurrentRow,
+      expandRow,
     };
   },
 });
@@ -161,12 +227,6 @@ export default defineComponent({
 
 <template>
   <div class="table-panel-container">
-    <!-- div class="panel-header">
-      <el-button type="primary" size="small" @click="handleAddTableRow">
-        <el-icon><Plus /></el-icon>
-      </el-button>
-    </div> -->
-    <!-- 新增和子项添加弹窗移至父组件处理 -->
     <el-dialog v-model="colorDialogVisible" title="选择颜色" width="300px">
       <el-color-picker v-model="colorValue" />
       <template #footer>
@@ -180,10 +240,11 @@ export default defineComponent({
       style="width: 100%"
       row-key="id"
       border
+      highlight-current-row
       @row-contextmenu="handleTableContextMenu"
       :row-style="tableRowStyle"
       :tree-props="isTreeTable ? { children: 'children' } : undefined"
-      :default-expand-all="isTreeTable"
+      :default-expand-all="false"
     >
       <!-- 展开收起箭头列（仅树形表格，让Element Plus自动处理） -->
       <el-table-column v-if="isTreeTable" width="50" label="" />
@@ -258,6 +319,9 @@ export default defineComponent({
         zIndex: 2000,
       }"
     >
+      <div class="context-menu-item" @click="handleTableCommand('add-row')">
+        <el-icon><Plus /></el-icon> 添加行
+      </div>
       <div class="context-menu-item" @click="handleTableCommand('edit')">
         <el-icon><Edit /></el-icon> 编辑
       </div>

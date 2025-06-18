@@ -25,6 +25,8 @@ export default defineComponent({
       { prop: "message", label: "消息", minWidth: 300 },
     ];
 
+    const rightTablePanelRef = ref();
+
     const init = (id: string | number | null) => {
       console.log("LogView.vue init called with ID:", id);
       // 如果需要，这里也可以根据ID刷新日志数据
@@ -41,15 +43,33 @@ export default defineComponent({
     };
 
     // 处理表格事件
-    const handleAddRow = () => {
+    const handleAddRow = (currentRow?: TableData) => {
       const newRow: TableData = {
         id: Date.now(),
         date: new Date().toISOString().split("T")[0],
         level: "info",
         message: "新日志记录",
       };
-      tableData.value.push(newRow);
-      ElMessage.success("添加成功");
+
+      if (currentRow) {
+        // 在指定行的下一行插入新行
+        const currentIndex = tableData.value.findIndex((item) => item.id === currentRow.id);
+        if (currentIndex !== -1) {
+          tableData.value.splice(currentIndex + 1, 0, newRow);
+          ElMessage.success("在选中行下方添加成功");
+        } else {
+          tableData.value.push(newRow);
+          ElMessage.success("添加成功");
+        }
+      } else {
+        tableData.value.push(newRow);
+        ElMessage.success("添加成功");
+      }
+
+      // 选中新添加的行
+      if (rightTablePanelRef.value) {
+        rightTablePanelRef.value.setCurrentRow(newRow.id);
+      }
     };
 
     const handleAddChild = (parentRow: TableData) => {
@@ -91,6 +111,7 @@ export default defineComponent({
     expose({ init });
 
     return {
+      rightTablePanelRef,
       tableData,
       tableColumns,
       handleAddRow,
@@ -105,6 +126,7 @@ export default defineComponent({
 
 <template>
   <RightTablePanel 
+    ref="rightTablePanelRef"
     :table-data="tableData" 
     :table-columns="tableColumns" 
     @add-row="handleAddRow"

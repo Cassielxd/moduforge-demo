@@ -290,6 +290,13 @@ export default defineComponent({
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+}
+
+.el-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px;
 }
 .panel-header {
   padding: 16px;

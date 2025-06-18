@@ -41,6 +41,8 @@ export default defineComponent({
       { prop: "value", label: "属性值", minWidth: 300 },
     ];
 
+    const rightTablePanelRef = ref();
+
     const init = (id: string | number | null) => {
       console.log("ProjectInfoView.vue init called with ID:", id);
       // 根据不同的节点ID可以加载不同的项目信息
@@ -51,15 +53,33 @@ export default defineComponent({
     };
 
     // 处理表格事件
-    const handleAddRow = () => {
+    const handleAddRow = (currentRow?: ProjectInfo) => {
       const newRow: ProjectInfo = {
         id: Date.now(),
         label: "新属性",
         value: "请输入值",
         editable: true,
       };
-      projectInfoData.value.push(newRow);
-      ElMessage.success("添加成功");
+
+      if (currentRow) {
+        // 在指定行的下一行插入新行
+        const currentIndex = projectInfoData.value.findIndex((item) => item.id === currentRow.id);
+        if (currentIndex !== -1) {
+          projectInfoData.value.splice(currentIndex + 1, 0, newRow);
+          ElMessage.success("在选中行下方添加成功");
+        } else {
+          projectInfoData.value.push(newRow);
+          ElMessage.success("添加成功");
+        }
+      } else {
+        projectInfoData.value.push(newRow);
+        ElMessage.success("添加成功");
+      }
+
+      // 选中新添加的行
+      if (rightTablePanelRef.value) {
+        rightTablePanelRef.value.setCurrentRow(newRow.id);
+      }
     };
 
     const handleAddChild = () => {
@@ -99,6 +119,7 @@ export default defineComponent({
     expose({ init });
 
     return {
+      rightTablePanelRef,
       projectInfoData,
       projectInfoColumns,
       handleAddRow,
@@ -115,6 +136,7 @@ export default defineComponent({
   <div class="project-info-container">
     <!-- 详细信息表格 -->
     <RightTablePanel
+      ref="rightTablePanelRef"
       :table-data="projectInfoData"
       :table-columns="projectInfoColumns"
       :is-tree-table="false"

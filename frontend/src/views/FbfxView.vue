@@ -190,8 +190,10 @@ export default defineComponent({
       // 可以根据不同的子标签页加载不同的数据
     };
 
+    const rightTablePanelRef = ref();
+
     // 处理表格事件
-    const handleAddRow = () => {
+    const handleAddRow = (currentRow?: TreeTableData) => {
       const newRow: TreeTableData = {
         id: Date.now(),
         name: "新文件",
@@ -199,8 +201,42 @@ export default defineComponent({
         size: "0KB",
         date: new Date().toISOString().split("T")[0],
       };
-      tableTreeData.value.push(newRow);
-      ElMessage.success("添加成功");
+
+      if (currentRow) {
+        // 在指定行的下一行插入新行
+        const insertAfter = (
+          data: TreeTableData[],
+          targetId: number | string
+        ): boolean => {
+          for (let i = 0; i < data.length; i++) {
+            if (data[i].id === targetId) {
+              // 在当前位置的下一行插入
+              data.splice(i + 1, 0, newRow);
+              return true;
+            }
+            // 如果有子节点，递归查找
+            if (data[i].children && insertAfter(data[i].children!, targetId)) {
+              return true;
+            }
+          }
+          return false;
+        };
+
+        if (!insertAfter(tableTreeData.value, currentRow.id)) {
+          // 如果没有找到指定行，就添加到末尾
+          tableTreeData.value.push(newRow);
+        }
+        ElMessage.success("在选中行下方添加成功");
+      } else {
+        // 没有指定行时，添加到末尾
+        tableTreeData.value.push(newRow);
+        ElMessage.success("添加成功");
+      }
+
+      // 选中新添加的行
+      if (rightTablePanelRef.value) {
+        rightTablePanelRef.value.setCurrentRow(newRow.id);
+      }
     };
 
     const handleAddChild = (parentRow: TreeTableData) => {
@@ -217,6 +253,13 @@ export default defineComponent({
       }
       parentRow.children.push(newChild);
       ElMessage.success("添加子项成功");
+
+      // 展开父节点以显示新添加的子项
+      if (rightTablePanelRef.value) {
+        rightTablePanelRef.value.expandRow(parentRow.id);
+        // 然后选中新添加的子项
+        rightTablePanelRef.value.setCurrentRow(newChild.id);
+      }
     };
 
     const handleEditRow = (row: TreeTableData) => {
@@ -334,6 +377,7 @@ export default defineComponent({
     expose({ init });
 
     return {
+      rightTablePanelRef,
       tableTreeData,
       tableColumns,
       activeSubTab,
@@ -367,6 +411,7 @@ export default defineComponent({
     <!-- 上半部分：主要表格内容 -->
     <div class="main-content-section">
       <RightTablePanel
+        ref="rightTablePanelRef"
         :table-data="tableTreeData"
         :table-columns="tableColumns"
         :is-tree-table="true"
@@ -434,7 +479,7 @@ export default defineComponent({
 
 /* 上半部分：主要表格内容 */
 .main-content-section {
-  height: 65%;
+  height: 55%;
   flex-shrink: 0;
   border-bottom: 1px solid #e4e7ed;
   overflow: hidden;
@@ -443,12 +488,13 @@ export default defineComponent({
 
 /* 下半部分：子标签页内容 */
 .sub-tabs-section {
-  height: calc(30% - 8px);
+  height: calc(45% - 8px);
   flex-shrink: 0;
   background: #fff;
   overflow: hidden;
-  border-top: 1px solid #e4e7ed;
-  border-radius: 4px 4px 0 0;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 /* 底部统计信息 */
@@ -506,18 +552,13 @@ export default defineComponent({
   flex-direction: column;
 }
 
-.main-content-section :deep(.panel-header) {
-  flex-shrink: 0;
-  height: 56px; /* 固定header高度 */
-}
-
 .main-content-section :deep(.el-table) {
   flex: 1;
-  height: calc(100% - 56px); /* 减去header高度 */
+  height: 100%;
 }
 
 .main-content-section :deep(.el-table .el-table__body-wrapper) {
-  max-height: calc(100% - 56px - 40px); /* 减去header和表头的高度 */
+  max-height: calc(100% - 40px);
   overflow-y: auto;
 }
 
@@ -528,15 +569,20 @@ export default defineComponent({
 /* 子标签页中的 RightTablePanel 样式调整 */
 .sub-tabs-section :deep(.table-panel-container) {
   height: 100%;
-}
-
-.sub-tabs-section :deep(.panel-header) {
-  padding: 8px 16px;
-  border-bottom: 1px solid #e4e7ed;
+  display: flex;
+  flex-direction: column;
 }
 
 .sub-tabs-section :deep(.el-table) {
+  flex: 1;
   font-size: 12px;
+  height: 100%;
+}
+
+.sub-tabs-section :deep(.el-table .el-table__body-wrapper) {
+  max-height: calc(100% - 40px);
+  overflow-y: auto;
+  min-height: 200px;
 }
 
 .sub-tabs-section :deep(.el-table th) {
@@ -557,11 +603,13 @@ export default defineComponent({
 
 :deep(.el-tabs__content) {
   height: calc(100% - 40px);
-  padding: 0;
+  padding: 8px;
+  overflow: hidden;
 }
 
 :deep(.el-tab-pane) {
   height: 100%;
+  overflow: hidden;
 }
 
 /* 表格样式 */

@@ -70,11 +70,11 @@ export default {
 <style scoped>
 .el-tabs {
   height: 100%;
-  width: 100vw;
+  width: 100%;
 }
 .el-tab-pane {
   padding: 16px;
-  height: 100%;
+  height: calc(100% - 40px);
   overflow-y: auto;
 }
 </style>

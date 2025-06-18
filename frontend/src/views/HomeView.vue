@@ -102,7 +102,10 @@ const getCurrentTime = () => {
 
 <style scoped>
 .home-layout {
+  width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
@@ -115,18 +118,23 @@ const getCurrentTime = () => {
 }
 
 .left-panel {
-  width: 280px;
+  width: 15%;
   border-right: 1px solid #e4e7ed;
+  background-color: #ffffff;
 }
 
 .resizer {
   width: 5px;
   cursor: col-resize;
+  background-color: #f5f7fa;
+  border-left: 1px solid #e4e7ed;
+  border-right: 1px solid #e4e7ed;
 }
 
 .right-panel {
-  flex: 1;
-  /* MultiTabView 内部已加 padding */
+  width: 80%;
+  background-color: #ffffff;
+  border-left: 1px solid #e4e7ed;
 }
 
 /* 底部统计信息 */
