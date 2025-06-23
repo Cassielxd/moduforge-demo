@@ -5,6 +5,7 @@ import { House, Document, View, Minus, FullScreen, Close, Setting, Clock } from 
 import { Window } from '@tauri-apps/api/window';
 // @ts-ignore
 import SettingsDialog from './SettingsDialog.vue';
+import { useHistoryStore } from '@/stores/history';
 
 const appWindow = new Window('main');
 const router = useRouter();
@@ -12,6 +13,8 @@ const route = useRoute();
 
 const activeMenu = ref((route.name as string) || "home");
 const showSettings = ref(false);
+
+const historyStore = useHistoryStore();
 
 const menuItems = [
   {
@@ -24,11 +27,7 @@ const menuItems = [
     name: "history",
     label: "历史记录",
     icon: Clock,
-    children: [
-      { id: 1, title: '项目 A', timestamp: '2024-03-20 10:00:00', type: '创建' },
-      { id: 2, title: '项目 B', timestamp: '2024-03-20 09:30:00', type: '修改' },
-      { id: 3, title: '项目 C', timestamp: '2024-03-19 16:45:00', type: '删除' },
-    ]
+    children: historyStore.historyList
   }
 ];
 
@@ -43,6 +42,10 @@ const handleMenuSelect = (key: string) => {
 const minimizeWindow = () => appWindow.minimize();
 const maximizeWindow = () => appWindow.toggleMaximize();
 const closeWindow = () => appWindow.close();
+
+const clearHistory = () => {
+  historyStore.clearHistory();
+};
 </script>
 
 <template>
@@ -65,13 +68,13 @@ const closeWindow = () => appWindow.close();
               <div class="history-submenu">
                 <div class="history-header">
                   <span>历史记录</span>
-                  <el-button type="danger" size="small">清空</el-button>
+                  <el-button type="danger" size="small" @click.stop="clearHistory">清空</el-button>
                 </div>
                 <el-scrollbar max-height="300px">
                   <div class="history-list">
-                    <div v-for="history in item.children" :key="history.id" class="history-item">
+                    <div v-for="history in item.children" :key="history.state_version" class="history-item">
                       <div class="history-item-header">
-                        <span class="history-title">{{ history.title }}</span>
+                        <span class="history-title">{{ history.description }}</span>
                         <el-tag size="small"
                           :type="history.type === '创建' ? 'success' : history.type === '修改' ? 'warning' : 'danger'">
                           {{ history.type }}
@@ -156,7 +159,7 @@ const closeWindow = () => appWindow.close();
 
 .header-menu {
   display: flex;
-  width: 100%;
+  ;
 }
 
 .header-nav-menu {

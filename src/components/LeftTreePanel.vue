@@ -5,6 +5,7 @@ import type { ElTree } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { addRootTree, addGcxmTree, addFootNote, deleteGcxmTree } from "@/api/gcxm";
 import { Folder, Document } from '@element-plus/icons-vue';
+import { useHistoryStore } from "@/stores/history";
 
 interface Tree {
   id: string;
@@ -24,6 +25,7 @@ export default defineComponent({
   },
   emits: ["update:treeData", "node-selected"],
   setup(props, { emit }) {
+    const historyStore = useHistoryStore();
     const localTreeData = ref<Tree[]>(props.treeData);
 
     const treeRef = ref<InstanceType<typeof ElTree>>();
@@ -75,6 +77,7 @@ export default defineComponent({
                 editor_name: rootId.value,
                 id: currentTreeItem.value?.id
               });
+              historyStore.refreshHistory(rootId.value || "");
               if (res.code == 200) {
                 const parent = currentTreeNode.value.parent;
                 const children = parent.data.children || parent.data;
@@ -103,6 +106,7 @@ export default defineComponent({
           id: currentTreeItem.value.id,
           footnote: remarkContent.value
         });
+        historyStore.refreshHistory(rootId.value || "");
         console.log(res);
         const footnote = currentTreeItem.value.marks.find(mark => mark.type === 'footnote');
         if (footnote) {
@@ -147,6 +151,7 @@ export default defineComponent({
           newNode = await addRootTree({ name: newNodeName.value.trim() });
           rootId.value = newNode.id;
         }
+        historyStore.refreshHistory(rootId.value || "");
         if (currentTreeItem.value) {
           if (!currentTreeItem.value.children) {
             currentTreeItem.value.children = [];

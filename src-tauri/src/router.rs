@@ -3,7 +3,7 @@ use axum::{
     Router,
 };
 
-use crate::controller::gcxm::{add_footnote, delete_gcxm, get_gcxm_tree, insert_child, new_project};
+use crate::controller::{gcxm::{add_footnote, delete_gcxm, get_gcxm_tree, insert_child, new_project}, get_history};
 
 pub fn build_app() -> Router {
     Router::new()
@@ -17,4 +17,6 @@ pub fn build_app() -> Router {
         .route("/gcxm/add_footnote", post(add_footnote))
         //删除工程项目
         .route("/gcxm/delete_gcxm", post(delete_gcxm))
+        // 历史记录
+        .route("/gcxm/get_history", post(get_history))
 }

@@ -50,6 +50,7 @@ moduforge-macros-derive = {path = "../../moduforge-rs/crates/derive"}
 moduforge-rules-engine = {path = "../../moduforge-rs/crates/engine"} 
 moduforge-rules-expression = {path = "../../moduforge-rs/crates/expression"} 
 moduforge-rules-template = {path = "../../moduforge-rs/crates/template"} 
+chrono = "0.4.41"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2.2.1"
