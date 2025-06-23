@@ -23,51 +23,74 @@ export const useGlobalShortcutsStore = defineStore("globalShortcuts", () => {
   const initialize = async () => {
     if (isInitialized.value) return;
 
-    // 注册默认快捷键
-    const defaultShortcuts: GlobalShortcut[] = [
-      {
-        id: "new-file",
-        name: "新建文件",
-        shortcut: "Ctrl+N",
-        enabled: true,
-        handler: () => {
-          console.log("新建文件");
-          // TODO: 实现新建文件功能
-        },
-      },
-      {
-        id: "save-file",
-        name: "保存文件",
-        shortcut: "Ctrl+S",
-        enabled: true,
-        handler: () => {
-          console.log("保存文件");
-          // TODO: 实现保存文件功能
-        },
-      },
-      {
-        id: "open-file",
-        name: "打开文件",
-        shortcut: "Ctrl+O",
-        enabled: true,
-        handler: () => {
-          console.log("打开文件");
-          // TODO: 实现打开文件功能
-        },
-      },
-    ];
+    try {
+      // 检查是否在 Tauri 环境中
+      if (typeof window !== "undefined" && !(window as any).__TAURI__) {
+        console.warn("不在 Tauri 环境中，跳过全局快捷键初始化");
+        isInitialized.value = true;
+        return;
+      }
 
-    for (const shortcut of defaultShortcuts) {
-      await register(shortcut.shortcut, shortcut.handler);
-      shortcuts.value.push(shortcut);
+      // 注册默认快捷键
+      const defaultShortcuts: GlobalShortcut[] = [
+        {
+          id: "new-file",
+          name: "新建文件",
+          shortcut: "Ctrl+N",
+          enabled: true,
+          handler: () => {
+            console.log("新建文件");
+            // TODO: 实现新建文件功能
+          },
+        },
+        {
+          id: "save-file",
+          name: "保存文件",
+          shortcut: "Ctrl+S",
+          enabled: true,
+          handler: () => {
+            console.log("保存文件");
+            // TODO: 实现保存文件功能
+          },
+        },
+        {
+          id: "open-file",
+          name: "打开文件",
+          shortcut: "Ctrl+O",
+          enabled: true,
+          handler: () => {
+            console.log("打开文件");
+            // TODO: 实现打开文件功能
+          },
+        },
+      ];
+
+      for (const shortcut of defaultShortcuts) {
+        try {
+          await register(shortcut.shortcut, shortcut.handler);
+          shortcuts.value.push(shortcut);
+        } catch (error) {
+          console.error(`注册快捷键 ${shortcut.shortcut} 失败:`, error);
+          // 继续注册其他快捷键
+        }
+      }
+
+      isInitialized.value = true;
+    } catch (error) {
+      console.error("全局快捷键初始化失败:", error);
+      isInitialized.value = true; // 设置为已初始化以避免重复尝试
     }
-
-    isInitialized.value = true;
   };
 
   // 注册单个快捷键
   const registerShortcut = async (shortcut: GlobalShortcut) => {
     try {
+      // 检查是否在 Tauri 环境中
+      if (typeof window !== "undefined" && !(window as any).__TAURI__) {
+        console.warn("不在 Tauri 环境中，跳过快捷键注册");
+        return;
+      }
+
       await register(shortcut.shortcut, shortcut.handler);
       shortcuts.value.push(shortcut);
     } catch (error) {
@@ -100,6 +123,13 @@ export const useGlobalShortcutsStore = defineStore("globalShortcuts", () => {
     if (!shortcut) return;
 
     try {
+      // 检查是否在 Tauri 环境中
+      if (typeof window !== "undefined" && !(window as any).__TAURI__) {
+        console.warn("不在 Tauri 环境中，跳过快捷键切换");
+        shortcut.enabled = !shortcut.enabled; // 仅更新 UI 状态
+        return;
+      }
+
       if (shortcut.enabled) {
         await unregister(shortcut.shortcut);
       } else {

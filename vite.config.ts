@@ -1,13 +1,13 @@
-import { fileURLToPath, URL } from 'node:url'
-import { resolve } from 'path'
+import { fileURLToPath, URL } from "node:url";
+import { resolve } from "path";
 
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import vueDevTools from "vite-plugin-vue-devtools";
 
-import AutoImport from 'unplugin-auto-import/vite'
-import Components from 'unplugin-vue-components/vite'
-import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+import AutoImport from "unplugin-auto-import/vite";
+import Components from "unplugin-vue-components/vite";
+import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -23,24 +23,17 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      "@": resolve(__dirname, "src"),
     },
   },
   server: {
     port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
   },
   define: {
-    'process.env': {
-      VITE_APP_TITLE: JSON.stringify('ModuForge Demo'),
-      VITE_API_BASE_URL: JSON.stringify('/api'),
+    "process.env": {
+      VITE_APP_TITLE: JSON.stringify("ModuForge Demo"),
+      VITE_API_BASE_URL: JSON.stringify("http://localhost:20008/api"),
       VITE_APP_ENV: JSON.stringify(process.env.NODE_ENV),
     },
   },
-})
+});

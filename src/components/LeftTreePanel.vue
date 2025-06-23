@@ -3,12 +3,15 @@ import { defineComponent, ref, reactive } from "vue";
 import type { PropType } from "vue";
 import type { ElTree } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { addRootTree, addGcxmTree } from "@/api/gcxm";
+import { Folder, Document } from '@element-plus/icons-vue';
 
 interface Tree {
-  id: number;
-  label: string;
+  id: string;
+  type: string;
+  attrs: { name: string, code: string };
   children?: Tree[];
-  remark?: string;
+  marks: any[];
 }
 
 export default defineComponent({
@@ -28,13 +31,13 @@ export default defineComponent({
     const treeContextMenuPosition = reactive({ x: 0, y: 0 });
     const currentTreeItem = ref<Tree | null>(null);
     const currentTreeNode = ref<any>(null);
-    const editingTreeNodeId = ref<number | null>(null);
-    const selectedTreeNodeId = ref<number | undefined>(undefined);
+    const editingTreeNodeId = ref<string | null>(null);
+    const selectedTreeNodeId = ref<string | undefined>(undefined);
     const remarkDialogVisible = ref(false);
-    const remarkContent = ref("");
+    const remarkContent = ref<string>();
     const addNodeDialogVisible = ref(false);
     const newNodeName = ref("");
-
+    const rootId = ref<string | undefined>(undefined);
     const handleTreeContextMenu = (event: MouseEvent, data: Tree, node: any) => {
       event.preventDefault();
       currentTreeItem.value = data;
@@ -77,10 +80,10 @@ export default defineComponent({
               ElMessage.success("删除成功");
               emit("update:treeData", localTreeData.value);
             })
-            .catch(() => {});
+            .catch(() => { });
           break;
         case "remark":
-          remarkContent.value = currentTreeItem.value.remark || "";
+          remarkContent.value = currentTreeItem.value.marks.find(mark => mark.type === "footnote")?.value;
           remarkDialogVisible.value = true;
           break;
       }
@@ -88,44 +91,73 @@ export default defineComponent({
 
     const handleRemarkConfirm = () => {
       if (currentTreeItem.value) {
-        currentTreeItem.value.remark = remarkContent.value;
+        const footnote = currentTreeItem.value.marks.find(mark => mark.type === 'footnote');
+        if (footnote) {
+          footnote.value = remarkContent.value;
+        } else {
+          currentTreeItem.value.marks.push({ type: "footnote", value: remarkContent.value });
+        }
         ElMessage.success("备注已保存");
         emit("update:treeData", localTreeData.value);
       }
       remarkDialogVisible.value = false;
     };
 
-    const handleAddNodeConfirm = () => {
+    const handleAddNodeConfirm = async () => {
       if (!newNodeName.value.trim()) {
         ElMessage.warning("请输入节点名称");
         return;
       }
 
-      const newNode = {
-        id: Date.now(),
-        label: newNodeName.value.trim(),
-      };
-
-      if (currentTreeItem.value) {
-        if (!currentTreeItem.value.children) {
-          currentTreeItem.value.children = [];
+      try {
+        let newNode: any;
+        // 根据是否有父节点决定调用哪个 API
+        if (currentTreeItem.value) {
+          let type = "DWGC";
+          if (currentTreeItem.value.id == rootId.value) {
+            type = "DXGC";
+          } else if (currentTreeItem.value.type == "dxgc") {
+            type = "DWGC";
+          } else {
+            type = "DWGC";
+          }
+          // 有父节点，调用 addGcxmTree 添加子节点
+          newNode = await addGcxmTree({
+            editor_name: rootId.value,
+            name: newNodeName.value.trim(),
+            parent_id: currentTreeItem.value.id,
+            type: type,
+            other: {}
+          });
+        } else {
+          // 没有父节点，调用 addRootTree 添加根节点
+          newNode = await addRootTree({ name: newNodeName.value.trim() });
+          rootId.value = newNode.id;
         }
-        currentTreeItem.value.children.push(newNode);
-      } else {
-        localTreeData.value.push(newNode);
+        if (currentTreeItem.value) {
+          if (!currentTreeItem.value.children) {
+            currentTreeItem.value.children = [];
+          }
+          currentTreeItem.value.children.push(newNode);
+        } else {
+          localTreeData.value.push(newNode);
+        }
+
+        // 设置新节点为当前选中节点
+        selectedTreeNodeId.value = newNode.id;
+        currentTreeItem.value = newNode;
+
+        // 通知父组件节点已选中
+        emit("node-selected", newNode);
+
+        ElMessage.success("添加成功");
+        emit("update:treeData", localTreeData.value);
+        addNodeDialogVisible.value = false;
+        newNodeName.value = "";
+      } catch (error) {
+        console.error("添加节点时发生错误:", error);
+        ElMessage.error("添加失败：网络错误或服务器异常");
       }
-
-      // 设置新节点为当前选中节点
-      selectedTreeNodeId.value = newNode.id;
-      currentTreeItem.value = newNode;
-
-      // 通知父组件节点已选中
-      emit("node-selected", newNode);
-
-      ElMessage.success("添加成功");
-      emit("update:treeData", localTreeData.value);
-      addNodeDialogVisible.value = false;
-      newNodeName.value = "";
     };
 
     const handleTreeNodeDblClick = (data: Tree) => {
@@ -140,6 +172,26 @@ export default defineComponent({
       currentTreeNode.value = node;
       selectedTreeNodeId.value = data.id;
       emit("node-selected", data);
+    };
+
+    const getFootnote = (marks: any[]): string | undefined => {
+      if (!Array.isArray(marks)) {
+        return undefined;
+      }
+      const footnote = marks.find((mark) => mark.type === "footnote");
+      return footnote?.value;
+    };
+
+    // 根据节点类型返回不同的图标组件
+    const getNodeIcon = (type: string) => {
+      switch (type) {
+        case 'dwgc':
+          return Folder; // 单位工程
+        case 'gcxm':
+          return Document; // 工程项目
+        default:
+          return Document; // 默认文档
+      }
     };
 
     return {
@@ -161,6 +213,9 @@ export default defineComponent({
       addNodeDialogVisible,
       newNodeName,
       handleAddNodeConfirm,
+      getFootnote,
+      getNodeIcon, // 暴露给模板
+      currentTreeItem
     };
   },
 });
@@ -171,42 +226,31 @@ export default defineComponent({
     <div class="panel-header">
       <h3>工程项目</h3>
       <el-button type="primary" size="small" @click="handleTreeCommand('add')">
-        <el-icon><Plus /></el-icon>
+        <el-icon>
+          <Plus />
+        </el-icon>
       </el-button>
     </div>
-    <el-tree
-      ref="treeRef"
-      :data="localTreeData"
-      node-key="id"
-      :current-node-key="selectedTreeNodeId"
-      default-expand-all
-      :expand-on-click-node="false"
-      @node-contextmenu="handleTreeContextMenu"
-      @node-dblclick="handleTreeNodeDblClick"
-      @node-click="handleTreeNodeClick"
-      draggable
-    >
+    <el-tree ref="treeRef" :data="localTreeData" node-key="id" :current-node-key="selectedTreeNodeId" default-expand-all
+      :expand-on-click-node="false" @node-contextmenu="handleTreeContextMenu" @node-dblclick="handleTreeNodeDblClick"
+      @node-click="handleTreeNodeClick" draggable>
       <template #default="{ data }">
         <span class="custom-tree-node">
+          <!-- 根据 type 显示不同图标 -->
+          <el-icon v-if="getNodeIcon(data.type)">
+            <component :is="getNodeIcon(data.type)" />
+          </el-icon>
           <template v-if="editingTreeNodeId === data.id">
-            <el-input
-              v-model="data.label"
-              class="editable-input"
-              size="small"
-              autofocus
-              @blur="finishEditTreeNode"
-              @keyup.enter="finishEditTreeNode"
-            />
+            <el-input v-model="data.attrs.name" class="editable-input" size="small" autofocus @blur="finishEditTreeNode"
+              @keyup.enter="finishEditTreeNode" />
           </template>
           <template v-else>
-            <span @dblclick="handleTreeNodeDblClick(data)">{{ data.label }}</span>
-            <el-tooltip
-              v-if="data.remark"
-              :content="data.remark"
-              placement="right"
-              effect="light"
-            >
-              <el-icon class="remark-icon"><ChatDotRound /></el-icon>
+            <span @dblclick="handleTreeNodeDblClick(data)">{{ data.attrs.name }}</span>
+            <el-tooltip v-if="getFootnote(data.marks)" :content="getFootnote(data.marks)" placement="right"
+              effect="light">
+              <el-icon class="remark-icon">
+                <ChatDotRound />
+              </el-icon>
             </el-tooltip>
           </template>
         </span>
@@ -214,44 +258,39 @@ export default defineComponent({
     </el-tree>
 
     <!-- Tree Context Menu -->
-    <div
-      v-if="treeContextMenuVisible"
-      class="custom-context-menu"
-      :style="{
-        left: treeContextMenuPosition.x + 'px',
-        top: treeContextMenuPosition.y + 'px',
-        zIndex: 2000,
-      }"
-    >
-      <div class="context-menu-item" @click="handleTreeCommand('add')">
-        <el-icon><Plus /></el-icon> 添加子节点
+    <div v-if="treeContextMenuVisible" class="custom-context-menu" :style="{
+      left: treeContextMenuPosition.x + 'px',
+      top: treeContextMenuPosition.y + 'px',
+      zIndex: 2000,
+    }">
+      <div class="context-menu-item" v-if="!currentTreeItem || currentTreeItem.type !== 'DWGC'"
+        @click="handleTreeCommand('add')">
+        <el-icon>
+          <Plus />
+        </el-icon> 添加子节点
       </div>
       <div class="context-menu-item" @click="handleTreeCommand('edit')">
-        <el-icon><Edit /></el-icon> 编辑
+        <el-icon>
+          <Edit />
+        </el-icon> 编辑
       </div>
       <div class="context-menu-item" @click="handleTreeCommand('remark')">
-        <el-icon><ChatDotRound /></el-icon> 添加备注
+        <el-icon>
+          <ChatDotRound />
+        </el-icon> 添加备注
       </div>
       <div class="context-menu-item" @click="handleTreeCommand('delete')">
-        <el-icon><Delete /></el-icon> 删除
+        <el-icon>
+          <Delete />
+        </el-icon> 删除
       </div>
     </div>
 
     <!-- Add Node Dialog -->
-    <el-dialog
-      v-model="addNodeDialogVisible"
-      title="添加新节点"
-      width="30%"
-      :close-on-click-modal="false"
-    >
+    <el-dialog v-model="addNodeDialogVisible" title="添加新节点" width="30%" :close-on-click-modal="false">
       <el-form label-width="80px">
         <el-form-item label="节点名称">
-          <el-input
-            v-model="newNodeName"
-            placeholder="请输入节点名称"
-            autofocus
-            @keyup.enter="handleAddNodeConfirm"
-          />
+          <el-input v-model="newNodeName" placeholder="请输入节点名称" autofocus @keyup.enter="handleAddNodeConfirm" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -263,18 +302,8 @@ export default defineComponent({
     </el-dialog>
 
     <!-- Remark Dialog -->
-    <el-dialog
-      v-model="remarkDialogVisible"
-      title="添加备注"
-      width="30%"
-      :close-on-click-modal="false"
-    >
-      <el-input
-        v-model="remarkContent"
-        type="textarea"
-        :rows="4"
-        placeholder="请输入备注内容"
-      />
+    <el-dialog v-model="remarkDialogVisible" title="添加备注" width="30%" :close-on-click-modal="false">
+      <el-input v-model="remarkContent" type="textarea" :rows="4" placeholder="请输入备注内容" />
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="remarkDialogVisible = false">取消</el-button>
@@ -298,6 +327,7 @@ export default defineComponent({
   overflow-y: auto;
   padding: 8px 16px;
 }
+
 .panel-header {
   padding: 16px;
   border-bottom: 1px solid #e4e7ed;
@@ -311,6 +341,7 @@ export default defineComponent({
   font-size: 16px;
   color: #303133;
 }
+
 .custom-tree-node {
   flex: 1;
   display: flex;

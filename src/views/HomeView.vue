@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, toRaw } from "vue";
+import { onMounted, ref, toRaw } from "vue";
 import LeftTreePanel from "../components/LeftTreePanel.vue";
 // @ts-ignore
 import MultiTabView from "../components/MultiTabView.vue";
@@ -11,10 +11,8 @@ const multiTabRef = ref<
   }
 >();
 
-const treeData = ref([
-  { id: 1, label: "Documents", children: [{ id: 4, label: "Projects" }] },
-  { id: 2, label: "Downloads", children: [{ id: 6, label: "Apps" }] },
-]);
+const treeData = ref([]);
+
 
 const handleNodeSelected = (node: any) => {
   const id = toRaw(node.id);
@@ -118,7 +116,7 @@ const getCurrentTime = () => {
 }
 
 .left-panel {
-  width: 15%;
+  width: 25%;
   border-right: 1px solid #e4e7ed;
   background-color: #ffffff;
 }
@@ -132,7 +130,7 @@ const getCurrentTime = () => {
 }
 
 .right-panel {
-  width: 80%;
+  width: 70%;
   background-color: #ffffff;
   border-left: 1px solid #e4e7ed;
 }

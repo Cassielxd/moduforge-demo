@@ -47,11 +47,11 @@ const closeWindow = () => appWindow.close();
 
 <template>
   <div class="main-layout">
-    <header class="main-header" data-tauri-drag-region>
+    <header class="main-header">
       <div class="header-left">
         <h1 class="app-title">ModuForge Demo</h1>
       </div>
-      <div class="header-menu">
+      <div class="header-menu" data-tauri-drag-region>
         <el-menu :default-active="activeMenu" mode="horizontal" @select="handleMenuSelect" background-color="#ffffff"
           text-color="#303133" active-text-color="#409EFF" :ellipsis="false" class="header-nav-menu">
           <template v-for="item in menuItems" :key="item.name">

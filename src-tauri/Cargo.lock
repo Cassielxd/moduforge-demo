@@ -115,7 +115,10 @@ name = "app"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
+ "dashmap",
+ "im",
  "lazy_static",
  "log",
  "moduforge-core",
@@ -129,6 +132,7 @@ dependencies = [
  "moduforge-transform",
  "serde",
  "serde_json",
+ "state",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
@@ -1560,6 +1564,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "generator"
+version = "0.7.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cc16584ff22b460a382b7feec54b23d2908d858152e5739a120b949293bd74e"
+dependencies = [
+ "cc",
+ "libc",
+ "log",
+ "rustversion",
+ "windows 0.48.0",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2413,6 +2430,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "loom"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff50ecb28bb86013e935fb6683ab1f6d3a20016f123c76fd4c27470076ac30f5"
+dependencies = [
+ "cfg-if",
+ "generator",
+ "scoped-tls",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lru"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2523,8 +2555,6 @@ dependencies = [
 [[package]]
 name = "moduforge-core"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdedf9bda5c4fa2b9fe60754ec252ee0f7bb2127fbd775c1c1b1e82e392a2623"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2547,8 +2577,6 @@ dependencies = [
 [[package]]
 name = "moduforge-macros"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f64c31bf1823ef7b16398917ddee2b0c8e8934dd4be8a71c8e8e18feb2d9e4a0"
 dependencies = [
  "anyhow",
  "moduforge-core",
@@ -2560,8 +2588,6 @@ dependencies = [
 [[package]]
 name = "moduforge-macros-derive"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2529595e341a45601c7d754cd12a1398e1a0737bb178f216c6c6854dc4113ca"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2571,8 +2597,6 @@ dependencies = [
 [[package]]
 name = "moduforge-model"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18c4f8f4cc19eb896430a7b89231ceb362f0757251128b4e913a1b1c6893cfd8"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2599,8 +2623,6 @@ dependencies = [
 [[package]]
 name = "moduforge-rules-engine"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37d8e80f445406045b16a3080f14bf50e3ff947d8639661a4a4d1864eb33c8e5"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -2623,8 +2645,6 @@ dependencies = [
 [[package]]
 name = "moduforge-rules-expression"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23e5d3bb4c74575a4386a5e1bc81c7b48956adf8a75dbbaccf975b3661371120"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -2651,8 +2671,6 @@ dependencies = [
 [[package]]
 name = "moduforge-rules-template"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "480488fc06f4f0e64ee67464e70cb52ce276c833522d6b4dd1753ac99609ae9d"
 dependencies = [
  "moduforge-rules-expression",
  "serde",
@@ -2663,8 +2681,6 @@ dependencies = [
 [[package]]
 name = "moduforge-state"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b7d908c28ad9b34f390601aa412c1bd61a07146b5c206a48382ffc78d28984f"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2686,8 +2702,6 @@ dependencies = [
 [[package]]
 name = "moduforge-transform"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d4a8413f52b5f098b0ea5e273d605bd907184f1d4b5294e3111b95e719fb6b0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -4268,6 +4282,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "scoped-tls"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294"
+
+[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4626,6 +4646,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "state"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b8c4a4445d81357df8b1a650d0d0d6fbbbfe99d064aa5e02f3e4022061476d8"
+dependencies = [
+ "loom",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4786,7 +4815,7 @@ dependencies = [
  "tao-macros",
  "unicode-segmentation",
  "url",
- "windows",
+ "windows 0.61.3",
  "windows-core",
  "windows-version",
  "x11-dl",
@@ -4863,7 +4892,7 @@ dependencies = [
  "webkit2gtk",
  "webview2-com",
  "window-vibrancy",
- "windows",
+ "windows 0.61.3",
 ]
 
 [[package]]
@@ -5042,7 +5071,7 @@ dependencies = [
  "tauri-utils",
  "thiserror 2.0.12",
  "url",
- "windows",
+ "windows 0.61.3",
 ]
 
 [[package]]
@@ -5068,7 +5097,7 @@ dependencies = [
  "url",
  "webkit2gtk",
  "webview2-com",
- "windows",
+ "windows 0.61.3",
  "wry",
 ]
 
@@ -5940,7 +5969,7 @@ checksum = "b542b5cfbd9618c46c2784e4d41ba218c336ac70d44c55e47b251033e7d85601"
 dependencies = [
  "webview2-com-macros",
  "webview2-com-sys",
- "windows",
+ "windows 0.61.3",
  "windows-core",
  "windows-implement",
  "windows-interface",
@@ -5964,7 +5993,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ae2d11c4a686e4409659d7891791254cf9286d3cfe0eef54df1523533d22295"
 dependencies = [
  "thiserror 2.0.12",
- "windows",
+ "windows 0.61.3",
  "windows-core",
 ]
 
@@ -6012,6 +6041,15 @@ dependencies = [
  "raw-window-handle",
  "windows-sys 0.59.0",
  "windows-version",
+]
+
+[[package]]
+name = "windows"
+version = "0.48.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e686886bc078bc1b0b600cac0147aadb815089b6e4da64016cbd754b6342700f"
+dependencies = [
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -6493,7 +6531,7 @@ dependencies = [
  "webkit2gtk",
  "webkit2gtk-sys",
  "webview2-com",
- "windows",
+ "windows 0.61.3",
  "windows-core",
  "windows-version",
  "x11-dl",

@@ -26,6 +26,10 @@ tokio = { version = "1.0", features = ["full"] }
 tokio-util = "0.7.14"
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
+state= {version = "0.6.0", features = ["tls"] } # 状态管理
+async-trait="0.1.88"     
+dashmap = "6.1.0"   #
+im = "15.1.0"
 # lazy_static 线程安全全局变量
 lazy_static = "1.4"
 anyhow="1"
@@ -35,17 +39,17 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 # 核心模块
-moduforge-model ="0.4.2" 
-moduforge-state ="0.4.2" 
-moduforge-transform ="0.4.2" 
-moduforge-core ="0.4.2" 
-moduforge-macros ="0.4.2" 
-moduforge-macros-derive ="0.4.2" 
+moduforge-model = {path = "../../moduforge-rs/crates/model"} 
+moduforge-state = {path = "../../moduforge-rs/crates/state"} 
+moduforge-transform = {path = "../../moduforge-rs/crates/transform"} 
+moduforge-core = {path = "../../moduforge-rs/crates/core"} 
+moduforge-macros = {path = "../../moduforge-rs/crates/macro"} 
+moduforge-macros-derive = {path = "../../moduforge-rs/crates/derive"} 
 
 # 规则引擎
-moduforge-rules-engine ="0.4.2" 
-moduforge-rules-expression ="0.4.2" 
-moduforge-rules-template ="0.4.2" 
+moduforge-rules-engine = {path = "../../moduforge-rs/crates/engine"} 
+moduforge-rules-expression = {path = "../../moduforge-rs/crates/expression"} 
+moduforge-rules-template = {path = "../../moduforge-rs/crates/template"} 
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2.2.1"
