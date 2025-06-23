@@ -70,7 +70,6 @@ impl ContextHelper {
     }
     /// 设置价格编辑器
     pub fn set_demo_editor(name: &str, editor: DemoEditor) {
-        
         let map = ContextHelper::get::<DashMap<String, DemoEditor>>();
         map.insert(name.to_string(), editor);
     }

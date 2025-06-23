@@ -20,7 +20,7 @@ async fn main() -> anyhow::Result<()> {
 
     tauri::Builder::default()
         .setup(|app| {
-            let  main = app.handle().get_webview_window("main").unwrap();
+            let main = app.handle().get_webview_window("main").unwrap();
             main.open_devtools();
             Ok(())
         })

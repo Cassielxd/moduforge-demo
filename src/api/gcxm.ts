@@ -18,9 +18,15 @@ export const addRootTree = async (data: any) => {
   return result;
 };
 
+//ipc 添加脚注
+export const addFootNote = async (data: any) => {
+  const result = await post("/gcxm/add_footnote", data);
+  return result;
+};
+
 //ipc 删除 树节点
 
-export const deleteGcxmTree = async (id: string) => {
-  const result = await get("/gcxm/delete_gcxm_tree", { id });
+export const deleteGcxmTree = async (data: any) => {
+  const result = await post("/gcxm/delete_gcxm", data);
   return result;
 };

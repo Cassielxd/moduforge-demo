@@ -1,6 +1,6 @@
+use lazy_static::lazy_static;
 use moduforge_core::mark::Mark;
 use moduforge_macros::mark;
-use lazy_static::lazy_static;
 pub const BG_COLOR_STR: &str = "bgColor";
 pub const FOOTNOTE_STR: &str = "footnote";
 

@@ -3,11 +3,13 @@ use std::sync::Arc;
 use moduforge_core::types::{Content, EditorOptionsBuilder, Extensions, NodePoolFnTrait};
 
 use crate::{
-    core::demo_editor::{DemoEditor, DemoEditorOptions}, marks, nodes::{
+    core::demo_editor::{DemoEditor, DemoEditorOptions},
+    marks,
+    nodes::{
         fbfx_csxm::{init_fbfx_csxm_fields, CSXM_STR, DE_STR, FBFX_STR},
         gcxm::{init_project_structure, DWGC_STR},
         rcj::{init_rcj_fields, RCJ_STR},
-    }
+    },
 };
 //获取编辑器
 pub async fn init_editor(options: DemoEditorOptions) -> DemoEditor {
@@ -26,7 +28,10 @@ pub async fn init_options(create_callback: Arc<dyn NodePoolFnTrait>) -> DemoEdit
 }
 //获取扩展
 pub fn init_extension() -> Vec<Extensions> {
-    let mut extensions = vec![Extensions::M(marks::BG_COLOR.clone()),Extensions::M(marks::FOOTNOTE.clone())];
+    let mut extensions = vec![
+        Extensions::M(marks::BG_COLOR.clone()),
+        Extensions::M(marks::FOOTNOTE.clone()),
+    ];
     // 工程项目、单项、单位Node
     let nodes = init_project_structure();
     for mut node in nodes {

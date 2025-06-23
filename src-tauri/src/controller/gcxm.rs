@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{
-    commands::gcxm::InsertChildCammand,
+    commands::gcxm::{AddFootNoteCammand, DeleteGcxmCammand, InsertChildCammand},
     error::AppError,
     initialize::editor::{init_editor, init_options},
     nodes::gcxm::{DWGC_STR, DXGC_STR, GCXM_STR},
@@ -56,9 +56,7 @@ impl NodePoolFnTrait for GcxmPost {
     }
 }
 
-pub async fn create_editor(
-    create_callback: Arc<GcxmPost>
-) -> anyhow::Result<()> {
+pub async fn create_editor(create_callback: Arc<GcxmPost>) -> anyhow::Result<()> {
     let option = init_options(create_callback.clone()).await;
     let editor = init_editor(option).await;
     ContextHelper::set_demo_editor(&create_callback.id.clone().unwrap(), editor);
@@ -76,16 +74,19 @@ pub async fn new_project(Json(mut param): Json<GcxmPost>) -> ResponseResult<Gcxm
         node.r#type == DWGC_STR || node.r#type == DXGC_STR || node.r#type == GCXM_STR
     }));
     let parent_map = &doc.get_inner().parent_map;
-    if let Some(root_item) = GcxmTreeItem::from_nodes(id.clone(),nodes, parent_map) {
+    if let Some(root_item) = GcxmTreeItem::from_nodes(id.clone(), nodes, parent_map) {
         res!(root_item)
     } else {
         Err(AppError(anyhow::anyhow!("无法构建工程树,未找到根节点")))
     }
-    
 }
 ///插入子节点
-pub async fn insert_child(Json(mut param): Json<InsertChildCammand>) -> ResponseResult<GcxmTreeItem> {
-    let editor: Option<dashmap::mapref::one::RefMut<'static, String, crate::core::demo_editor::DemoEditor>> = ContextHelper::get_demo_editor(&param.editor_name);
+pub async fn insert_child(
+    Json(mut param): Json<InsertChildCammand>,
+) -> ResponseResult<GcxmTreeItem> {
+    let editor: Option<
+        dashmap::mapref::one::RefMut<'static, String, crate::core::demo_editor::DemoEditor>,
+    > = ContextHelper::get_demo_editor(&param.editor_name);
 
     if editor.is_none() {
         return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
@@ -97,14 +98,23 @@ pub async fn insert_child(Json(mut param): Json<InsertChildCammand>) -> Response
         .command_with_meta(Arc::new(param.clone()), "插入子节点".to_string(), meta)
         .await?;
     let doc = editor.doc();
-    let node =doc.get_node(&param.id.clone().unwrap()).unwrap();
-    let mut nodes: Vec<Arc<Node>> = doc.descendants(&param.id.clone().unwrap()).iter().filter(|n| n.r#type == DWGC_STR || n.r#type == DXGC_STR).cloned().collect();
+    let node = doc.get_node(&param.id.clone().unwrap()).unwrap();
+    let mut nodes: Vec<Arc<Node>> = doc
+        .descendants(&param.id.clone().unwrap())
+        .iter()
+        .filter(|n| n.r#type == DWGC_STR || n.r#type == DXGC_STR)
+        .cloned()
+        .collect();
     nodes.push(node);
     let parent_map = &doc.get_inner().parent_map;
-    if let Some(root_item) = GcxmTreeItem::from_nodes(param.id.clone().unwrap(),nodes, parent_map) {
+    if let Some(root_item) = GcxmTreeItem::from_nodes(param.id.clone().unwrap(), nodes, parent_map)
+    {
         res!(root_item)
     } else {
-        Err(AppError(anyhow::anyhow!("无法构建工程树,未找到根节点,{}", param.id.unwrap())))
+        Err(AppError(anyhow::anyhow!(
+            "无法构建工程树,未找到根节点,{}",
+            param.id.unwrap()
+        )))
     }
 }
 
@@ -122,15 +132,43 @@ pub async fn get_gcxm_tree(Path(editor_name): Path<String>) -> ResponseResult<Gc
     }));
 
     let parent_map = &doc.get_inner().parent_map;
-    if let Some(root_item) = GcxmTreeItem::from_nodes(editor_name,nodes, parent_map) {
+    if let Some(root_item) = GcxmTreeItem::from_nodes(editor_name, nodes, parent_map) {
         res!(root_item)
     } else {
         Err(AppError(anyhow::anyhow!("无法构建工程树,未找到根节点")))
     }
 }
 
+///删除工程项目节点
+pub async fn delete_gcxm(Json(param): Json<DeleteGcxmCammand>) -> ResponseResult<String> {
+    if param.id == param.editor_name {
+        return Err(AppError(anyhow::anyhow!("不能删除工程项目".to_string())));
+    }
+    let editor = ContextHelper::get_demo_editor(&param.editor_name);
+    if editor.is_none() {
+        return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
+    }
+    let mut editor = editor.unwrap();
+    let meta = serde_json::to_value(param.clone())?;
+    editor
+        .command_with_meta(Arc::new(param.clone()), "删除工程项目".to_string(), meta)
+        .await?;
+    res!("删除成功".to_string())
+}
 
-
+///添加脚注
+pub async fn add_footnote(Json(param): Json<AddFootNoteCammand>) -> ResponseResult<()> {
+    let editor = ContextHelper::get_demo_editor(&param.editor_name);
+    if editor.is_none() {
+        return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
+    }
+    let mut editor = editor.unwrap();
+    let meta = serde_json::to_value(param.clone())?;
+    editor
+        .command_with_meta(Arc::new(param.clone()), "添加脚注".to_string(), meta)
+        .await?;
+    res!(())
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GcxmTreeItem {
@@ -145,18 +183,19 @@ impl GcxmTreeItem {
     fn from_nodes(
         root_id: NodeId,
         nodes: Vec<Arc<Node>>,
-        parent_map: &im::HashMap<NodeId, NodeId>
+        parent_map: &im::HashMap<NodeId, NodeId>,
     ) -> Option<Self> {
         use std::collections::HashMap;
         if nodes.is_empty() {
             return None;
         }
-        let node_map: HashMap<NodeId, Arc<Node>> = nodes.iter().map(|n| (n.id.clone(), n.clone())).collect();
+        let node_map: HashMap<NodeId, Arc<Node>> =
+            nodes.iter().map(|n| (n.id.clone(), n.clone())).collect();
 
         fn build_tree(
             id: &NodeId,
             node_map: &HashMap<NodeId, Arc<Node>>,
-            parent_map: &im::HashMap<NodeId, NodeId>
+            parent_map: &im::HashMap<NodeId, NodeId>,
         ) -> Option<GcxmTreeItem> {
             let node = node_map.get(id)?;
             let children: Vec<GcxmTreeItem> = node_map

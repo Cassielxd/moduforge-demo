@@ -40,23 +40,31 @@ pub fn init_project_structure() -> Vec<Node> {
     vec![gcxm, dxgc, dwgc]
 }
 
-
 pub fn init_project_structure_field(name: &str) -> HashMap<String, AttributeSpec> {
     HashMap::from_iter(vec![
         // 工程名称
-        ("name".to_string(), AttributeSpec { default: Some(name.into()) }),
+        (
+            "name".to_string(),
+            AttributeSpec {
+                default: Some(name.into()),
+            },
+        ),
         // 项目编码
         ("code".to_string(), AttributeSpec { default: None }),
     ])
 }
-
 
 pub fn init_unit_structure_field() -> HashMap<String, AttributeSpec> {
     HashMap::from_iter(vec![
         // 单位工程编号
         ("code".to_string(), AttributeSpec { default: None }),
         // 单位工程名称
-        ("name".to_string(), AttributeSpec { default: Some("单位工程".into()) }),
+        (
+            "name".to_string(),
+            AttributeSpec {
+                default: Some("单位工程".into()),
+            },
+        ),
         // 合计金额（元）
         ("total".to_string(), AttributeSpec { default: None }),
     ])

@@ -3,7 +3,7 @@ import { defineComponent, ref, reactive } from "vue";
 import type { PropType } from "vue";
 import type { ElTree } from "element-plus";
 import { ElMessage, ElMessageBox } from "element-plus";
-import { addRootTree, addGcxmTree } from "@/api/gcxm";
+import { addRootTree, addGcxmTree, addFootNote, deleteGcxmTree } from "@/api/gcxm";
 import { Folder, Document } from '@element-plus/icons-vue';
 
 interface Tree {
@@ -70,15 +70,22 @@ export default defineComponent({
             cancelButtonText: "取消",
             type: "warning",
           })
-            .then(() => {
-              const parent = currentTreeNode.value.parent;
-              const children = parent.data.children || parent.data;
-              const index = children.findIndex(
-                (item: Tree) => item.id === currentTreeItem.value?.id
-              );
-              children.splice(index, 1);
-              ElMessage.success("删除成功");
-              emit("update:treeData", localTreeData.value);
+            .then(async () => {
+              let res: any = await deleteGcxmTree({
+                editor_name: rootId.value,
+                id: currentTreeItem.value?.id
+              });
+              if (res.code == 200) {
+                const parent = currentTreeNode.value.parent;
+                const children = parent.data.children || parent.data;
+                const index = children.findIndex(
+                  (item: Tree) => item.id === currentTreeItem.value?.id
+                );
+                children.splice(index, 1);
+                ElMessage.success("删除成功");
+                emit("update:treeData", localTreeData.value);
+              }
+
             })
             .catch(() => { });
           break;
@@ -89,8 +96,14 @@ export default defineComponent({
       }
     };
 
-    const handleRemarkConfirm = () => {
+    const handleRemarkConfirm = async () => {
       if (currentTreeItem.value) {
+        let res = await addFootNote({
+          editor_name: rootId.value,
+          id: currentTreeItem.value.id,
+          footnote: remarkContent.value
+        });
+        console.log(res);
         const footnote = currentTreeItem.value.marks.find(mark => mark.type === 'footnote');
         if (footnote) {
           footnote.value = remarkContent.value;
