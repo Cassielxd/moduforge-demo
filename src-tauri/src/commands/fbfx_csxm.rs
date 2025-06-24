@@ -1,34 +1,21 @@
-use std::collections::HashMap;
 
 use async_trait::async_trait;
-use moduforge_model::types::NodeId;
 use moduforge_state::{transaction::Command, Transaction};
 use moduforge_transform::TransformResult;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-use crate::commands::{ShareCommand, ShareCommandData};
+use crate::commands::{DeleteNodeRequest, ShareCommand, AddRequest};
 
 // 插入分部分项
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct InsertFbfxCsxmCommand {
-    pub editor_name: String,
-    pub parent_id: String,
-    pub id: Option<NodeId>,
-    pub r#type: String,
-    pub attrs: HashMap<String, Value>,
+pub struct InsertFbfxCsxmCommand {
+    pub data:AddRequest
 }
 
 #[async_trait]
 impl Command for InsertFbfxCsxmCommand {
     async fn execute(&self, tr: &mut Transaction) -> TransformResult<()> {
-        self.add_node(tr, &ShareCommandData{
-            editor_name: &self.editor_name,
-            parent_id: &self.parent_id,
-            id: &self.id,
-            r#type: &self.r#type,
-            attrs: &self.attrs,
-        }).await
+        self.add_node(tr, &self.data).await
     }
     
     fn name(&self) -> String {
@@ -38,5 +25,28 @@ impl Command for InsertFbfxCsxmCommand {
 
 #[async_trait]
 impl ShareCommand for InsertFbfxCsxmCommand {
+    
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeleteFbfxCsxmCommand {
+    pub data:DeleteNodeRequest
+}
+
+#[async_trait]
+impl Command for DeleteFbfxCsxmCommand {
+    async fn execute(&self, tr: &mut Transaction) -> TransformResult<()> {
+        // 设置 meta 高度后续删除 的是 措施项目节点 todo!()
+        self.delete_node(tr, &self.data).await
+    }
+    
+    fn name(&self) -> String {
+        "delete_fbfx_csxm".to_string()
+    }
+}
+
+#[async_trait]
+impl ShareCommand for DeleteFbfxCsxmCommand {
     
 }

@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use axum::Json;
 use moduforge_core::types::HistoryEntryWithMeta;
+use moduforge_model::{attrs::Attrs, mark::Mark, node::Node, types::NodeId};
 use moduforge_rules_template::render;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Local};
@@ -61,4 +64,53 @@ pub struct HistoryEntry {
     /// 时间戳
     pub timestamp: String,
     pub current: bool,
+}
+
+
+
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GcxmTreeItem {
+    pub id: NodeId,
+    pub r#type: String,
+    pub attrs: Attrs,
+    pub children: Vec<GcxmTreeItem>,
+    pub marks: Vec<Mark>,
+}
+
+impl GcxmTreeItem {
+    fn from_nodes(
+        root_id: NodeId,
+        nodes: Vec<Arc<Node>>,
+        parent_map: &im::HashMap<NodeId, NodeId>,
+    ) -> Option<Self> {
+        use std::collections::HashMap;
+        if nodes.is_empty() {
+            return None;
+        }
+        let node_map: HashMap<NodeId, Arc<Node>> =
+            nodes.iter().map(|n| (n.id.clone(), n.clone())).collect();
+
+        fn build_tree(
+            id: &NodeId,
+            node_map: &HashMap<NodeId, Arc<Node>>,
+            parent_map: &im::HashMap<NodeId, NodeId>,
+        ) -> Option<GcxmTreeItem> {
+            let node = node_map.get(id)?;
+            let children: Vec<GcxmTreeItem> = node_map
+                .iter()
+                .filter(|(_, n)| parent_map.get(&n.id) == Some(id))
+                .filter_map(|(cid, _)| build_tree(cid, node_map, parent_map))
+                .collect();
+            Some(GcxmTreeItem {
+                id: node.id.clone(),
+                r#type: node.r#type.to_string(),
+                attrs: node.attrs.clone(),
+                children,
+                marks: node.marks.iter().cloned().collect(),
+            })
+        }
+
+        build_tree(&root_id, &node_map, parent_map)
+    }
 }

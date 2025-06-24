@@ -5,28 +5,17 @@ use moduforge_model::types::NodeId;
 use moduforge_state::{transaction::Command, Transaction};
 use moduforge_transform::TransformResult;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-use crate::{commands::{DeleteNodeCammand, ShareCommand, ShareCommandData}, marks::FOOTNOTE_STR};
-#[derive(Debug, Serialize, Deserialize, Clone)]
+use crate::{commands::{AddMarkRequest, DeleteNodeRequest, ShareCommand, AddRequest}, marks::FOOTNOTE_STR};
+#[derive(Debug, Clone)]
 pub struct InsertChildCammand {
-    pub editor_name: String,
-    pub parent_id: String,
-    pub id: Option<NodeId>,
-    pub r#type: String,
-    pub other: HashMap<String, Value>,
+    pub data:AddRequest
 }
 
 #[async_trait]
 impl Command for InsertChildCammand {
     async fn execute(&self, tr: &mut Transaction) -> TransformResult<()> {
-       self.add_node(tr, &ShareCommandData{
-            editor_name: &self.editor_name,
-            parent_id: &self.parent_id,
-            id: &self.id,
-            r#type: &self.r#type,
-            attrs: &self.other,
-        }).await
+       self.add_node(tr, &self.data).await
     }
     fn name(&self) -> String {
         "insert_gcxm_child".to_string()
@@ -56,29 +45,31 @@ impl Command for AddFootNoteCammand {
                 "value".to_string(),
                 self.footnote.clone().into(),
             )])));
-        tr.add_mark(self.id.clone(), vec![mark])?;
-        Ok(())
+            self.add_mark(tr, &AddMarkRequest{
+                editor_name: self.editor_name.clone(),
+                id: self.id.to_string(),
+                marks: vec![mark],
+            }).await
     }
     fn name(&self) -> String {
         "add_gcxm_footnote".to_string()
     }
 }
-
+#[async_trait]
+impl ShareCommand for AddFootNoteCammand {
+    
+}
 
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeleteGcxmCammand {
-    pub editor_name: String,
-    pub id: NodeId,
+    pub data:DeleteNodeRequest
 }
 
 #[async_trait]
 impl Command for DeleteGcxmCammand {
     async fn execute(&self, tr: &mut Transaction) -> TransformResult<()> {
-        self.delete_node(tr, &DeleteNodeCammand{
-            editor_name: &self.editor_name,
-            id: &self.id,
-        }).await
+        self.delete_node(tr, &self.data).await
     }
     fn name(&self) -> String {
         "delete_gcxm".to_string()

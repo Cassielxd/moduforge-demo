@@ -1,24 +1,18 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
-use axum::{extract::Path, Json};
+use axum::{extract::Path, routing::{get, post}, Json, Router};
 use moduforge_core::{types::NodePoolFnTrait, ForgeResult};
 use moduforge_model::{
-    attrs::Attrs, id_generator::IdGenerator, mark::Mark, node::Node, node_pool::NodePool,
-    types::NodeId,
+    id_generator::IdGenerator, node::Node, node_pool::NodePool,
+
 };
 use moduforge_state::StateConfig;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use serde_json::Value;
 
 use crate::{
-    commands::gcxm::{AddFootNoteCammand, DeleteGcxmCammand, InsertChildCammand},
-    error::AppError,
-    initialize::editor::{init_editor, init_options},
-    nodes::gcxm::{DWGC_STR, DXGC_STR, GCXM_STR},
-    res,
-    response::Res,
-    ContextHelper, ResponseResult,
+    commands::{gcxm::{AddFootNoteCammand, DeleteGcxmCammand, InsertChildCammand}, AddRequest, DeleteNodeRequest}, controller::{get_history, GcxmTreeItem}, error::AppError, initialize::editor::{init_editor, init_options}, nodes::gcxm::{DWGC_STR, DXGC_STR, GCXM_STR}, res, response::Res, ContextHelper, ResponseResult
 };
 
 #[derive(Debug, Deserialize)]
@@ -82,7 +76,7 @@ pub async fn new_project(Json(mut param): Json<GcxmPost>) -> ResponseResult<Gcxm
 }
 ///插入子节点
 pub async fn insert_child(
-    Json(mut param): Json<InsertChildCammand>,
+    Json(mut param): Json<AddRequest>,
 ) -> ResponseResult<GcxmTreeItem> {
     let editor: Option<
         dashmap::mapref::one::RefMut<'static, String, crate::core::demo_editor::DemoEditor>,
@@ -95,7 +89,7 @@ pub async fn insert_child(
     param.id = Some(IdGenerator::get_id());
     let meta = serde_json::to_value(param.clone())?;
     editor
-        .command_with_meta(Arc::new(param.clone()), "插入 {{other.name}} 子节点".to_string(), meta)
+        .command_with_meta(Arc::new(InsertChildCammand{data:param.clone()}), "插入 {{other.name}} 子节点".to_string(), meta)
         .await?;
     let doc = editor.doc();
     let node = doc.get_node(&param.id.clone().unwrap()).unwrap();
@@ -140,7 +134,7 @@ pub async fn get_gcxm_tree(Path(editor_name): Path<String>) -> ResponseResult<Gc
 }
 
 ///删除工程项目节点
-pub async fn delete_gcxm(Json(param): Json<DeleteGcxmCammand>) -> ResponseResult<String> {
+pub async fn delete_gcxm(Json(param): Json<DeleteNodeRequest>) -> ResponseResult<String> {
     if param.id == param.editor_name {
         return Err(AppError(anyhow::anyhow!("不能删除工程项目".to_string())));
     }
@@ -152,7 +146,7 @@ pub async fn delete_gcxm(Json(param): Json<DeleteGcxmCammand>) -> ResponseResult
     let node = editor.doc().get_node(&param.id).unwrap();
     let meta = serde_json::to_value(node)?;
     editor
-        .command_with_meta(Arc::new(param.clone()), "删除  {{a.name}}".to_string(), meta)
+        .command_with_meta(Arc::new(DeleteGcxmCammand{data:param.clone()}), "删除  {{a.name}}".to_string(), meta)
         .await?;
     res!("删除成功".to_string())
 }
@@ -171,48 +165,22 @@ pub async fn add_footnote(Json(param): Json<AddFootNoteCammand>) -> ResponseResu
     res!(())
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct GcxmTreeItem {
-    pub id: NodeId,
-    pub r#type: String,
-    pub attrs: Attrs,
-    pub children: Vec<GcxmTreeItem>,
-    pub marks: Vec<Mark>,
-}
 
-impl GcxmTreeItem {
-    fn from_nodes(
-        root_id: NodeId,
-        nodes: Vec<Arc<Node>>,
-        parent_map: &im::HashMap<NodeId, NodeId>,
-    ) -> Option<Self> {
-        use std::collections::HashMap;
-        if nodes.is_empty() {
-            return None;
-        }
-        let node_map: HashMap<NodeId, Arc<Node>> =
-            nodes.iter().map(|n| (n.id.clone(), n.clone())).collect();
 
-        fn build_tree(
-            id: &NodeId,
-            node_map: &HashMap<NodeId, Arc<Node>>,
-            parent_map: &im::HashMap<NodeId, NodeId>,
-        ) -> Option<GcxmTreeItem> {
-            let node = node_map.get(id)?;
-            let children: Vec<GcxmTreeItem> = node_map
-                .iter()
-                .filter(|(_, n)| parent_map.get(&n.id) == Some(id))
-                .filter_map(|(cid, _)| build_tree(cid, node_map, parent_map))
-                .collect();
-            Some(GcxmTreeItem {
-                id: node.id.clone(),
-                r#type: node.r#type.to_string(),
-                attrs: node.attrs.clone(),
-                children,
-                marks: node.marks.iter().cloned().collect(),
-            })
-        }
 
-        build_tree(&root_id, &node_map, parent_map)
-    }
+
+pub fn build_app() -> Router {
+    Router::new()
+        //创建新工程项目
+        .route("/", post(new_project))
+        //插入子节点 单项、单位
+        .route("/insert_child", post(insert_child))
+        //获取工程项目树
+        .route("/get_gcxm_tree/{editor_name}", get(get_gcxm_tree))
+        //添加脚注
+        .route("/add_footnote", post(add_footnote))
+        //删除工程项目
+        .route("/delete_gcxm", post(delete_gcxm))
+        // 历史记录
+        .route("/get_history", post(get_history))
 }
