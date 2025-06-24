@@ -8,6 +8,7 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    AddChildDialog: typeof import('./src/components/AddChildDialog.vue')['default']
     ElBadge: typeof import('element-plus/es')['ElBadge']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
@@ -42,6 +43,7 @@ declare module 'vue' {
     HistoryDialog: typeof import('./src/components/HistoryDialog.vue')['default']
     LeftTreePanel: typeof import('./src/components/LeftTreePanel.vue')['default']
     MainLayout: typeof import('./src/components/MainLayout.vue')['default']
+    MainTableWithAddChild: typeof import('./src/components/MainTableWithAddChild.vue')['default']
     MultiTabView: typeof import('./src/components/MultiTabView.vue')['default']
     RightTablePanel: typeof import('./src/components/RightTablePanel.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']

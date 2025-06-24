@@ -7,10 +7,9 @@ use rand::Rng;
 
 use crate::commands::AddRequest;
 
-/// 分部分项 措施项目 插件
-///  用作 分部分项 措施项目 的 节点 创建 后续 操作
-///
-/// 负责管理 分部分项 措施项目 的 节点  后续 操作
+/* 
+分部分项 措施项目 插件
+ */
 #[derive(Debug)]
 pub struct FbfxCsxmPlugin;
 

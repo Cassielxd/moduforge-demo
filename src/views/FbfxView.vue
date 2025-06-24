@@ -249,6 +249,28 @@ export default defineComponent({
                 handleAddRow();
                 ElMessage.success("添加成功");
               },
+              onAddChildRow: (parentRow: any) => {
+                // 添加子项功能实现
+                const newChild = {
+                  id: `child_${parentRow.id}_${Date.now()}`,
+                  name: `${parentRow.name} 的子项`,
+                  type: parentRow.type || "子类型",
+                  subType: "新建子项",
+                  description: "请编辑描述信息",
+                  children: [],
+                  _row_color: parentRow._row_color || "#409EFF"
+                };
+
+                if (mainTabulatorComposable.addRow(newChild, "bottom", parentRow.id)) {
+                  ElMessage.success(`已为 "${parentRow.name}" 添加子项`);
+                  // 展开父行以显示新添加的子项
+                  setTimeout(() => {
+                    mainTabulatorComposable.expandRow(parentRow.id);
+                  }, 100);
+                } else {
+                  ElMessage.error("添加子项失败");
+                }
+              },
               onEditRow: (row: any) => {
                 handleEditRow(row);
               },

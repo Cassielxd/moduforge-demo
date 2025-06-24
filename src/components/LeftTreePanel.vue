@@ -145,7 +145,7 @@ export default defineComponent({
             editor_name: rootStore.getRootId,
             parent_id: currentTreeItem.value.id,
             type: type,
-            other: { name: newNodeName.value.trim(), }
+            attrs: { name: newNodeName.value.trim(), }
           });
         } else {
           // 没有父节点，调用 addRootTree 添加根节点

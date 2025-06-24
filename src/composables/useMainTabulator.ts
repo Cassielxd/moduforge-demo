@@ -40,6 +40,11 @@ export function useMainTabulator() {
     onAddRow: () => {
       ElMessage.info("主表格新增功能");
     },
+    onAddChildRow: (row: any) => {
+      ElMessage.info(
+        "添加子项功能 - 请在外部组件中通过 setEventHandlers 自定义实现"
+      );
+    },
     onEditRow: (row: any) => {
       ElMessage.info("主表格编辑功能，可以双击单元格编辑");
     },
@@ -227,6 +232,13 @@ export function useMainTabulator() {
           action: () => {
             console.log("右键菜单 - 添加行被点击");
             eventHandlers.onAddRow();
+          },
+        },
+        {
+          label: "添加子项",
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 添加子项被点击");
+            eventHandlers.onAddChildRow(row.getData());
           },
         },
         {

@@ -102,7 +102,7 @@ pub async fn insert_child(Json(mut param): Json<AddRequest>) -> ResponseResult<G
             Arc::new(InsertChildCammand {
                 data: param.clone(),
             }),
-            "插入 {{other.name}} 子节点".to_string(),
+            "插入 {{attrs.name}} 子节点".to_string(),
             meta,
         )
         .await?;

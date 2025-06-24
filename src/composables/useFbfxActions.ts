@@ -153,42 +153,33 @@ export function useFbfxActions(
       ElMessage.warning("请先选择要删除的行");
       return;
     }
-
-    ElMessageBox.confirm(`确定要删除 "${targetRow.name}" 吗？`, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    })
-      .then(() => {
-        // 递归查找并删除节点
-        const deleteNode = (
-          data: TreeTableData[],
-          targetId: number | string
-        ): boolean => {
-          for (let i = 0; i < data.length; i++) {
-            // 使用字符串比较确保匹配
-            if (String(data[i].id) === String(targetId)) {
-              data.splice(i, 1);
-              return true;
-            }
-            if (data[i].children && deleteNode(data[i].children!, targetId)) {
-              return true;
-            }
-          }
-          return false;
-        };
-
-        if (deleteNode(tableTreeData.value, targetRow!.id)) {
-          ElMessage.success("删除成功");
-          // 清空当前选中行
-          if (String(currentRowKey.value) === String(targetRow!.id)) {
-            currentRowKey.value = null;
-          }
-        } else {
-          ElMessage.error("删除失败，未找到指定行");
+    // 递归查找并删除节点
+    const deleteNode = (
+      data: TreeTableData[],
+      targetId: number | string
+    ): boolean => {
+      for (let i = 0; i < data.length; i++) {
+        // 使用字符串比较确保匹配
+        if (String(data[i].id) === String(targetId)) {
+          data.splice(i, 1);
+          return true;
         }
-      })
-      .catch(() => {});
+        if (data[i].children && deleteNode(data[i].children!, targetId)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (deleteNode(tableTreeData.value, targetRow!.id)) {
+      ElMessage.success("删除成功");
+      // 清空当前选中行
+      if (String(currentRowKey.value) === String(targetRow!.id)) {
+        currentRowKey.value = null;
+      }
+    } else {
+      ElMessage.error("删除失败，未找到指定行");
+    }
   };
 
   // 复制行
