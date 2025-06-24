@@ -95,7 +95,7 @@ pub async fn insert_child(
     param.id = Some(IdGenerator::get_id());
     let meta = serde_json::to_value(param.clone())?;
     editor
-        .command_with_meta(Arc::new(param.clone()), "插入 {{name}} 子节点".to_string(), meta)
+        .command_with_meta(Arc::new(param.clone()), "插入 {{other.name}} 子节点".to_string(), meta)
         .await?;
     let doc = editor.doc();
     let node = doc.get_node(&param.id.clone().unwrap()).unwrap();
@@ -149,9 +149,10 @@ pub async fn delete_gcxm(Json(param): Json<DeleteGcxmCammand>) -> ResponseResult
         return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
     }
     let mut editor = editor.unwrap();
-    let meta = serde_json::to_value(param.clone())?;
+    let node = editor.doc().get_node(&param.id).unwrap();
+    let meta = serde_json::to_value(node)?;
     editor
-        .command_with_meta(Arc::new(param.clone()), "删除 id :{{id}} 工程项目".to_string(), meta)
+        .command_with_meta(Arc::new(param.clone()), "删除  {{a.name}}".to_string(), meta)
         .await?;
     res!("删除成功".to_string())
 }

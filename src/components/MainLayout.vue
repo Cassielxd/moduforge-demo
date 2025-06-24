@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { House, Document, View, Minus, FullScreen, Close, Setting, Clock } from "@element-plus/icons-vue";
 import { Window } from '@tauri-apps/api/window';
 // @ts-ignore
 import SettingsDialog from './SettingsDialog.vue';
 import { useHistoryStore } from '@/stores/history';
+import { useRootStore } from '@/stores/root';
 
 const appWindow = new Window('main');
 const router = useRouter();
@@ -15,24 +16,29 @@ const activeMenu = ref((route.name as string) || "home");
 const showSettings = ref(false);
 
 const historyStore = useHistoryStore();
+const rootStore = useRootStore();
 
-const menuItems = [
+watch(() => historyStore.historyList, (newVal) => {
+  menuItems.value[1].children = newVal;
+});
+const menuItems = ref([
   {
     name: "home",
     label: "首页",
     icon: House,
     path: "/"
   },
+
   {
     name: "history",
     label: "历史记录",
     icon: Clock,
     children: historyStore.historyList
   }
-];
+]);
 
 const handleMenuSelect = (key: string) => {
-  const item = menuItems.find((item) => item.name === key);
+  const item = menuItems.value.find((item) => item.name === key);
   if (item && item.path) {
     router.push(item.path);
     activeMenu.value = key;
@@ -44,17 +50,20 @@ const maximizeWindow = () => appWindow.toggleMaximize();
 const closeWindow = () => appWindow.close();
 
 const clearHistory = () => {
-  historyStore.clearHistory();
+  //historyStore.clearHistory();
 };
 </script>
 
 <template>
   <div class="main-layout">
-    <header class="main-header">
+    <header class="main-header" data-tauri-drag-region>
       <div class="header-left">
         <h1 class="app-title">ModuForge Demo</h1>
+        <div v-if="rootStore.getRootId" class="project-id">
+          <el-tag size="small" type="info">项目ID: {{ rootStore.getRootId }}</el-tag>
+        </div>
       </div>
-      <div class="header-menu" data-tauri-drag-region>
+      <div class="header-menu">
         <el-menu :default-active="activeMenu" mode="horizontal" @select="handleMenuSelect" background-color="#ffffff"
           text-color="#303133" active-text-color="#409EFF" :ellipsis="false" class="header-nav-menu">
           <template v-for="item in menuItems" :key="item.name">
@@ -72,12 +81,13 @@ const clearHistory = () => {
                 </div>
                 <el-scrollbar max-height="300px">
                   <div class="history-list">
+
                     <div v-for="history in item.children" :key="history.state_version" class="history-item">
                       <div class="history-item-header">
                         <span class="history-title">{{ history.description }}</span>
                         <el-tag size="small"
                           :type="history.type === '创建' ? 'success' : history.type === '修改' ? 'warning' : 'danger'">
-                          {{ history.type }}
+                          {{ history.type || "操作" }}
                         </el-tag>
                       </div>
                       <div class="history-time">{{ history.timestamp }}</div>
@@ -149,12 +159,18 @@ const clearHistory = () => {
 .header-left {
   display: flex;
   align-items: center;
+  gap: 12px;
 }
 
 .app-title {
   font-size: 20px;
   color: #303133;
   margin: 0;
+}
+
+.project-id {
+  display: flex;
+  align-items: center;
 }
 
 .header-menu {

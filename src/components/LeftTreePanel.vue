@@ -6,6 +6,7 @@ import { ElMessage, ElMessageBox } from "element-plus";
 import { addRootTree, addGcxmTree, addFootNote, deleteGcxmTree } from "@/api/gcxm";
 import { Folder, Document } from '@element-plus/icons-vue';
 import { useHistoryStore } from "@/stores/history";
+import { useRootStore } from "@/stores/root";
 
 interface Tree {
   id: string;
@@ -26,6 +27,7 @@ export default defineComponent({
   emits: ["update:treeData", "node-selected"],
   setup(props, { emit }) {
     const historyStore = useHistoryStore();
+    const rootStore = useRootStore();
     const localTreeData = ref<Tree[]>(props.treeData);
 
     const treeRef = ref<InstanceType<typeof ElTree>>();
@@ -39,7 +41,7 @@ export default defineComponent({
     const remarkContent = ref<string>();
     const addNodeDialogVisible = ref(false);
     const newNodeName = ref("");
-    const rootId = ref<string | undefined>(undefined);
+
     const handleTreeContextMenu = (event: MouseEvent, data: Tree, node: any) => {
       event.preventDefault();
       currentTreeItem.value = data;
@@ -73,21 +75,21 @@ export default defineComponent({
             type: "warning",
           })
             .then(async () => {
-              let res: any = await deleteGcxmTree({
-                editor_name: rootId.value,
+              await deleteGcxmTree({
+                editor_name: rootStore.getRootId,
                 id: currentTreeItem.value?.id
               });
-              historyStore.refreshHistory(rootId.value || "");
-              if (res.code == 200) {
-                const parent = currentTreeNode.value.parent;
-                const children = parent.data.children || parent.data;
-                const index = children.findIndex(
-                  (item: Tree) => item.id === currentTreeItem.value?.id
-                );
-                children.splice(index, 1);
-                ElMessage.success("删除成功");
-                emit("update:treeData", localTreeData.value);
-              }
+              historyStore.refreshHistory(rootStore.getRootId || "");
+
+              const parent = currentTreeNode.value.parent;
+              const children = parent.data.children || parent.data;
+              const index = children.findIndex(
+                (item: Tree) => item.id === currentTreeItem.value?.id
+              );
+              children.splice(index, 1);
+              ElMessage.success("删除成功");
+              emit("update:treeData", localTreeData.value);
+
 
             })
             .catch(() => { });
@@ -102,11 +104,11 @@ export default defineComponent({
     const handleRemarkConfirm = async () => {
       if (currentTreeItem.value) {
         let res = await addFootNote({
-          editor_name: rootId.value,
+          editor_name: rootStore.getRootId,
           id: currentTreeItem.value.id,
           footnote: remarkContent.value
         });
-        historyStore.refreshHistory(rootId.value || "");
+        historyStore.refreshHistory(rootStore.getRootId || "");
         console.log(res);
         const footnote = currentTreeItem.value.marks.find(mark => mark.type === 'footnote');
         if (footnote) {
@@ -131,7 +133,7 @@ export default defineComponent({
         // 根据是否有父节点决定调用哪个 API
         if (currentTreeItem.value) {
           let type = "DWGC";
-          if (currentTreeItem.value.id == rootId.value) {
+          if (currentTreeItem.value.id == rootStore.getRootId) {
             type = "DXGC";
           } else if (currentTreeItem.value.type == "dxgc") {
             type = "DWGC";
@@ -140,18 +142,17 @@ export default defineComponent({
           }
           // 有父节点，调用 addGcxmTree 添加子节点
           newNode = await addGcxmTree({
-            editor_name: rootId.value,
-            name: newNodeName.value.trim(),
+            editor_name: rootStore.getRootId,
             parent_id: currentTreeItem.value.id,
             type: type,
-            other: {}
+            other: { name: newNodeName.value.trim(), }
           });
         } else {
           // 没有父节点，调用 addRootTree 添加根节点
           newNode = await addRootTree({ name: newNodeName.value.trim() });
-          rootId.value = newNode.id;
+          rootStore.setRootId(newNode.id);
         }
-        historyStore.refreshHistory(rootId.value || "");
+        historyStore.refreshHistory(rootStore.getRootId || "");
         if (currentTreeItem.value) {
           if (!currentTreeItem.value.children) {
             currentTreeItem.value.children = [];

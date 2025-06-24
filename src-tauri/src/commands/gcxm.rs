@@ -13,7 +13,6 @@ pub struct InsertChildCammand {
     pub editor_name: String,
     pub parent_id: String,
     pub id: Option<NodeId>,
-    pub name: String,
     pub r#type: String,
     pub other: HashMap<String, Value>,
 }
