@@ -28,8 +28,24 @@ pub fn init_fbfx_csxm_fields() -> Vec<Node> {
     de.set_attrs(get_attr_spec());
     let mut rcj = RCJ.clone();
     rcj.set_attrs(get_attr_spec());
-    vec![fb, qd, de, rcj, FBFX.clone(), CSXM.clone()]
+    let mut fbfx = FBFX.clone();
+    fbfx.set_attrs(get_attr_name("分部分项"));
+    let mut csxm = CSXM.clone();
+    csxm.set_attrs(get_attr_name("措施项目"));
+    vec![fb, qd, de, rcj, fbfx, csxm]
 }
+fn get_attr_name(name: &str) -> HashMap<String, AttributeSpec> {
+    let mut att = HashMap::new();
+    att.insert(
+        "name".to_string(),
+        AttributeSpec {
+            default: Some(name.into()),
+        },
+    ); 
+    att
+}
+
+
 
 fn get_attr_spec() -> HashMap<String, AttributeSpec> {
     let mut att = HashMap::new();

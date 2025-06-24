@@ -1,4 +1,5 @@
 use axum::Json;
+use moduforge_core::types::HistoryEntryWithMeta;
 use moduforge_rules_template::render;
 use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Local};
@@ -27,8 +28,16 @@ pub async fn get_history(Json(param): Json<GetHistoryVersionCammand>) -> Respons
     let history_manager = editor.get_history_manager();
     let history_version = history_manager.get_history();
     let history = history_version;
-    let mut history_result = history.past.iter().map(|item| {
-        let description = render(&item.description,item.meta.clone().into()).unwrap();
+    let mut history_result = history.past.iter().map(render_history_entry).collect::<Vec<HistoryEntry>>();
+    history_result.push(render_history_entry(&history.present));
+    let  history_future = history.future.iter().map(render_history_entry).collect::<Vec<HistoryEntry>>();
+    history_result.extend(history_future);
+    res!(history_result)
+}
+
+/// 渲染历史记录描述
+fn render_history_entry(item: &HistoryEntryWithMeta) -> HistoryEntry {
+    let description = render(&item.description,item.meta.clone().into()).unwrap();
        // 日期格式化成yyyy-MM-dd HH:mm:ss
        let timestamp = DateTime::<Local>::from(item.timestamp)
            .format("%Y-%m-%d %H:%M:%S")
@@ -39,31 +48,6 @@ pub async fn get_history(Json(param): Json<GetHistoryVersionCammand>) -> Respons
             description: description.to_string(),
             timestamp: timestamp,
         };
-    }).collect::<Vec<HistoryEntry>>();
-    let description = render(&history.present.description,history.present.meta.clone().into()).unwrap();
-    history_result.push(HistoryEntry {
-        current: true,
-        state_version: history.present.state.version,
-        description: description.to_string(),
-        timestamp: DateTime::<Local>::from(history.present.timestamp)
-            .format("%Y-%m-%d %H:%M:%S")
-            .to_string(),
-    });
-
-    let  history_future = history.future.iter().map(|item| {
-        let description = render(&item.description,item.meta.clone().into()).unwrap();
-
-        return HistoryEntry {
-            current: false,
-            state_version: item.state.version,
-            description: description.to_string(),
-            timestamp: DateTime::<Local>::from(item.timestamp)
-                .format("%Y-%m-%d %H:%M:%S")
-                .to_string(),
-        };
-    }).collect::<Vec<HistoryEntry>>();
-    history_result.extend(history_future);
-    res!(history_result)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

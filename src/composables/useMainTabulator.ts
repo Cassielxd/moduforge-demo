@@ -2,6 +2,7 @@
 import { ref, nextTick } from "vue";
 // @ts-ignore
 import { TabulatorFull as Tabulator } from "tabulator-tables";
+import "tabulator-tables/dist/css/tabulator.min.css";
 
 // 接口定义
 interface TableItem {
@@ -158,9 +159,17 @@ export function useMainTabulator() {
       mainTabulator.value.destroy();
     }
 
+    console.log("Initializing Tabulator with data:", data);
+    console.log("Element:", element);
+    console.log(
+      "Element dimensions:",
+      element.offsetWidth,
+      element.offsetHeight
+    );
+
     mainTabulator.value = new Tabulator(element, {
       data: data,
-      height: "400px",
+      height: "100%", // 恢复使用百分比高度
       layout: "fitColumns",
       columns: getColumns(onColorChange),
       dataTree: true,
@@ -185,6 +194,8 @@ export function useMainTabulator() {
         console.log("Right click on row:", row.getData());
       },
     });
+
+    console.log("Tabulator instance created:", mainTabulator.value);
   };
 
   // 更新数据

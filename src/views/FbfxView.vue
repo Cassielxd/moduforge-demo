@@ -1,5 +1,5 @@
 <script lang="ts">
-import { defineComponent, ref, nextTick, reactive, onMounted, onUnmounted, watch } from "vue";
+import { defineComponent, ref, nextTick, onMounted, onUnmounted, watch } from "vue";
 import { ElMessage, ElMessageBox, ElDialog, ElButton, ElColorPicker, ElIcon, ElTabs, ElTabPane } from "element-plus";
 // @ts-ignore
 import { TabulatorFull as Tabulator } from 'tabulator-tables';
@@ -7,40 +7,20 @@ import { TabulatorFull as Tabulator } from 'tabulator-tables';
 import type { RowComponent, CellComponent } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
 import { Plus, Edit, Delete, CopyDocument, Brush, Folder, Document } from '@element-plus/icons-vue';
+
+// 导入新的组合式函数
 import { useMainTabulator } from '@/composables/useMainTabulator';
 import { useSubTabulator } from '@/composables/useSubTabulator';
+import { useFbfxData, convertToMainTabulatorFormat } from '@/composables/useFbfxData';
+import { useFbfxActions } from '@/composables/useFbfxActions';
+import { useColorDialog } from '@/composables/useColorDialog';
+import { useFbfxUtils } from '@/composables/useFbfxUtils';
+import { useFbfxTables } from '@/composables/useFbfxTables';
 
-interface TreeTableData {
-  id: number | string;
-  name: string;
-  type: string;
-  size?: string;
-  date: string;
-  children?: TreeTableData[];
-  color?: string;
-}
-
-interface TableColumn {
-  prop: string;
-  label: string;
-  minWidth?: number;
-  width?: number;
-  align?: "left" | "center" | "right";
-  type?: "date";
-}
-
-// 将主表格数据转换为useMainTabulator所需的格式
-const convertToMainTabulatorFormat = (data: TreeTableData[]): any[] => {
-  return data.map(item => ({
-    id: String(item.id),
-    name: item.name,
-    type: item.type,
-    subType: item.size || '',
-    description: item.date,
-    children: item.children ? convertToMainTabulatorFormat(item.children) : undefined,
-    _row_color: item.color
-  }));
-};
+// 导入专门的子表格组合式函数
+import { useRcjDetail } from '@/composables/useRcjDetail';
+import { usePriceStructure } from '@/composables/usePriceStructure';
+import { useStandardConversion } from '@/composables/useStandardConversion';
 
 export default defineComponent({
   name: "FbfxView",
@@ -60,471 +40,188 @@ export default defineComponent({
     Document,
   },
   setup(props, { expose }) {
-    // 使用主表格组合式函数
+    // 使用组合式函数
     const mainTabulatorComposable = useMainTabulator();
-    // 使用子表格组合式函数
     const subTabulatorComposable = useSubTabulator();
 
-    // 主表格数据
-    const tableTreeData = ref<TreeTableData[]>([
-      {
-        id: 1,
-        name: "文档目录",
-        type: "folder",
-        date: "2024-07-29",
-        children: [
-          {
-            id: 11,
-            name: "项目说明.docx",
-            type: "file",
-            size: "2.5MB",
-            date: "2024-07-29",
-          },
-          {
-            id: 12,
-            name: "需求文档.pdf",
-            type: "file",
-            size: "1.8MB",
-            date: "2024-07-28",
-          },
-        ],
-      },
-      {
-        id: 2,
-        name: "代码目录",
-        type: "folder",
-        date: "2024-07-29",
-        children: [
-          {
-            id: 21,
-            name: "src",
-            type: "folder",
-            date: "2024-07-29",
-            children: [
-              {
-                id: 211,
-                name: "main.ts",
-                type: "file",
-                size: "1.2KB",
-                date: "2024-07-29",
-              },
-              {
-                id: 212,
-                name: "App.vue",
-                type: "file",
-                size: "3.4KB",
-                date: "2024-07-29",
-              },
-            ],
-          },
-          {
-            id: 22,
-            name: "package.json",
-            type: "file",
-            size: "2.1KB",
-            date: "2024-07-28",
-          },
-        ],
-      },
-      {
-        id: 3,
-        name: "readme.md",
-        type: "file",
-        size: "5.2KB",
-        date: "2024-07-27",
-      },
-    ]);
+    // 主表格数据管理
+    const fbfxData = useFbfxData();
+    const { tableTreeData, tableColumns } = fbfxData;
 
-    const tableColumns: TableColumn[] = [
-      { prop: "name", label: "名称", width: 200 },
-      { prop: "type", label: "类型", width: 100 },
-      { prop: "size", label: "大小", width: 100 },
-      { prop: "date", label: "修改时间", width: 150 },
-    ];
+    // 子表格专门的组合式函数
+    const rcjDetail = useRcjDetail();
+    const priceStructure = usePriceStructure();
+    const standardConversion = useStandardConversion();
 
-    // 子标签页状态
-    const activeSubTab = ref("detail");
+    // 获取子表格数据和配置
+    const detailData = rcjDetail.detailData;
+    const detailColumns = rcjDetail.detailColumns;
 
-    // ========== Tabulator 相关变量 ==========
+    const statisticsData = priceStructure.structureData;
+    const statisticsColumns = priceStructure.structureColumns;
+
+    const historyData = standardConversion.conversionHistory;
+    const historyColumns = standardConversion.historyColumns;
+
+    // 主表格引用直接在这里定义
     const mainTableRef = ref<HTMLElement>();
-    const subTableRef = ref<HTMLElement>();
 
-    // 子表格数据
-    const historyData = ref([
-      {
-        id: 1,
-        time: "2024-07-29 15:30",
-        action: "创建",
-        file: "项目说明.docx",
-        user: "张三",
-      },
-      {
-        id: 2,
-        time: "2024-07-29 14:20",
-        action: "修改",
-        file: "需求文档.pdf",
-        user: "李四",
-      },
-    ]);
+    // 表格管理
+    const fbfxTables = useFbfxTables();
+    const {
+      activeSubTab,
+      detailTableRef,
+      statisticsTableRef,
+      historyTableRef,
+      initSubTabulator,
+      handleSubTabChange: _handleSubTabChange,
+    } = fbfxTables;
 
-    const detailData = ref([
-      { id: 1, property: "文件类型", value: "目录/文件" },
-      { id: 2, property: "创建时间", value: "2024-07-29" },
-      { id: 3, property: "修改时间", value: "2024-07-29" },
-      { id: 4, property: "文件大小", value: "2.5MB" },
-    ]);
+    // 业务操作
+    const fbfxActions = useFbfxActions(tableTreeData, mainTabulatorComposable);
+    const {
+      currentTableItem,
+      currentRowKey,
+      handleColorChange,
+      handleRowClick,
+      handleAddRow,
+      handleAddChild,
+      handleEditRow,
+      handleDeleteRow,
+      handleCopyRow,
+      setCurrentRow,
+      handleSubTableAddRow,
+      handleSubTableEditRow,
+      handleSubTableDeleteRow,
+      handleSubTableCopyRow,
+    } = fbfxActions;
 
-    const statisticsData = ref([
-      {
-        id: 1,
-        name: "总文件数",
-        value: "156",
-        unit: "个",
-        description: "包含所有文件和文件夹",
-      },
-      {
-        id: 2,
-        name: "文件夹数",
-        value: "23",
-        unit: "个",
-        description: "目录文件夹数量",
-      },
-    ]);
+    // 颜色对话框
+    const colorDialog = useColorDialog(currentTableItem, handleColorChange);
+    const {
+      colorDialogVisible,
+      colorValue,
+      openColorDialog,
+      handleColorSubmit,
+    } = colorDialog;
 
-    // 子表格列配置
-    const historyColumns = [
-      { prop: "time", label: "时间", width: 150 },
-      { prop: "action", label: "操作", width: 80 },
-      { prop: "file", label: "文件", minWidth: 200 },
-      { prop: "user", label: "用户", width: 100 },
-    ];
+    // 工具函数
+    const fbfxUtils = useFbfxUtils(tableTreeData);
+    const { getFolderCount, getFileCount, getCurrentTime } = fbfxUtils;
 
-    const detailColumns = [
-      { prop: "property", label: "属性", width: 120 },
-      { prop: "value", label: "值", minWidth: 200 },
-    ];
-
-    const statisticsColumns = [
-      { prop: "name", label: "统计项", width: 120 },
-      { prop: "value", label: "数值", width: 80, align: "right" as const },
-      { prop: "unit", label: "单位", width: 60 },
-      { prop: "description", label: "说明", minWidth: 200 },
-    ];
-
-    const currentTableItem = ref<TreeTableData | null>(null);
-    const currentRowKey = ref<string | number | null>(null);
-
-    // 颜色选择相关
-    const colorDialogVisible = ref(false);
-    const colorValue = ref("#409EFF");
-
-    // 颜色变化处理函数
-    const handleColorChange = (id: string, color: string) => {
-      // 在原始数据中更新颜色
-      const updateColor = (items: TreeTableData[]): void => {
-        for (const item of items) {
-          if (String(item.id) === id) {
-            item.color = color;
-            return;
-          }
-          if (item.children) {
-            updateColor(item.children);
-          }
-        }
-      };
-
-      updateColor(tableTreeData.value);
-      ElMessage.success(`已设置颜色：${color}`);
-    };
-
-    // 行点击处理函数
-    const handleRowClick = (data: any) => {
-      currentRowKey.value = data.id;
-      console.log('选中行:', data);
-    };
-
-
-
-    // ========== 主表格事件处理 ==========
-    const handleAddRow = (currentRow?: TreeTableData) => {
-      const newRow: TreeTableData = {
-        id: Date.now(),
-        name: "新文件",
-        type: "file",
-        size: "0KB",
-        date: new Date().toISOString().split("T")[0],
-      };
-
-      if (currentRow) {
-        // 在指定行的下一行插入新行
-        const insertAfter = (
-          data: TreeTableData[],
-          targetId: number | string
-        ): boolean => {
-          for (let i = 0; i < data.length; i++) {
-            if (data[i].id === targetId) {
-              // 在当前位置的下一行插入
-              data.splice(i + 1, 0, newRow);
-              return true;
-            }
-            // 如果有子节点，递归查找
-            if (data[i].children && insertAfter(data[i].children!, targetId)) {
-              return true;
-            }
-          }
-          return false;
-        };
-
-        if (!insertAfter(tableTreeData.value, currentRow.id)) {
-          // 如果没有找到指定行，就添加到末尾
-          tableTreeData.value.push(newRow);
-        }
-        ElMessage.success("在选中行下方添加成功");
-      } else {
-        // 没有指定行时，添加到末尾
-        tableTreeData.value.push(newRow);
-        ElMessage.success("添加成功");
-      }
-
-      // 数据会通过watch自动更新到表格
-
-      // 选中新添加的行
-      nextTick(() => {
-        setCurrentRow(newRow.id);
-      });
-    };
-
-    const handleAddChild = (parentRow: TreeTableData, row: RowComponent) => {
-      const newChild: TreeTableData = {
-        id: Date.now(),
-        name: "新子项",
-        type: "file",
-        size: "0KB",
-        date: new Date().toISOString().split("T")[0],
-      };
-
-      console.log('添加子项到父行:', parentRow);
-
-      if (!parentRow.children) {
-        parentRow.children = [];
-      }
-      parentRow.children.push(newChild);
-
-      ElMessage.success("添加子项成功");
-
-      // 数据会通过watch自动更新到表格，展开状态会自动保持
-    };
-
-    const handleEditRow = (row: TreeTableData) => {
-      ElMessage.info("编辑功能，可以双击单元格编辑");
-    };
-
-    const handleDeleteRow = (row: TreeTableData) => {
-      ElMessageBox.confirm("确定要删除这一行吗？", "警告", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      })
-        .then(() => {
-          // 递归查找并删除节点
-          const deleteNode = (
-            data: TreeTableData[],
-            targetId: number | string
-          ): boolean => {
-            for (let i = 0; i < data.length; i++) {
-              if (data[i].id === targetId) {
-                data.splice(i, 1);
-                return true;
-              }
-              if (data[i].children && deleteNode(data[i].children!, targetId)) {
-                return true;
-              }
-            }
-            return false;
+    // 子表格事件处理器 - 根据不同标签页使用不同的处理方法
+    const getSubTableEventHandlers = (tabName: string) => {
+      switch (tabName) {
+        case 'detail':
+          return {
+            onAddRow: rcjDetail.addDetailRow,
+            onEditRow: rcjDetail.editDetailRow,
+            onDeleteRow: rcjDetail.deleteDetailRow,
+            onCopyRow: rcjDetail.copyDetailRow,
           };
-
-          deleteNode(tableTreeData.value, row.id);
-
-          // 数据会通过watch自动更新到表格
-          ElMessage.success("删除成功");
-        })
-        .catch(() => { });
-    };
-
-    const handleCopyRow = (row: TreeTableData) => {
-      const newItem: TreeTableData = {
-        ...row,
-        id: Date.now(),
-        name: `${row.name} (复制)`,
-        children: undefined, // 复制时不包含子项
-      };
-      tableTreeData.value.push(newItem);
-
-      // 数据会通过watch自动更新到表格
-
-      ElMessage.success("复制成功");
-
-      // 选中复制的新行
-      nextTick(() => {
-        setCurrentRow(newItem.id);
-      });
-    };
-
-    // ========== 子表格事件处理 ==========
-    const handleSubTableAddRow = () => {
-      ElMessage.info("子表格新增功能");
-    };
-
-    const handleSubTableEditRow = (row: any) => {
-      ElMessage.info("子表格编辑功能，可以双击单元格编辑");
-    };
-
-    const handleSubTableDeleteRow = (row: any) => {
-      ElMessage.info("子表格删除功能");
-    };
-
-    const handleSubTableCopyRow = (row: any) => {
-      ElMessage.info("子表格复制功能");
-    };
-
-    // ========== 颜色选择相关 ==========
-    const openColorDialog = () => {
-      colorValue.value = currentTableItem.value?.color || "#409EFF";
-      colorDialogVisible.value = true;
-    };
-
-    const handleColorSubmit = () => {
-      if (!colorValue.value) {
-        ElMessage.warning("请选择颜色");
-        return;
-      }
-      if (currentTableItem.value) {
-        // 使用组合式函数的颜色更新功能
-        handleColorChange(String(currentTableItem.value.id), colorValue.value);
-      }
-      colorDialogVisible.value = false;
-    };
-
-    // ========== 工具函数 ==========
-    const setCurrentRow = (rowId: string | number) => {
-      currentRowKey.value = rowId;
-      // 使用组合式函数选择行
-      mainTabulatorComposable.selectRow(String(rowId));
-    };
-
-    // 初始化子表格
-    const initSubTabulator = () => {
-      if (!subTableRef.value) return;
-
-      let data, columns;
-      switch (activeSubTab.value) {
-        case "detail":
-          data = detailData.value;
-          columns = detailColumns;
-          break;
-        case "statistics":
-          data = statisticsData.value;
-          columns = statisticsColumns;
-          break;
-        case "history":
-          data = historyData.value;
-          columns = historyColumns;
-          break;
+        case 'statistics':
+          return {
+            onAddRow: priceStructure.addStructureRow,
+            onEditRow: priceStructure.editStructureRow,
+            onDeleteRow: priceStructure.deleteStructureRow,
+            onCopyRow: priceStructure.copyStructureRow,
+          };
+        case 'history':
+          return {
+            onAddRow: standardConversion.addConversionRule,
+            onEditRow: standardConversion.editConversionRule,
+            onDeleteRow: standardConversion.deleteConversionRule,
+            onCopyRow: standardConversion.copyConversionRule,
+          };
         default:
-          data = detailData.value;
-          columns = detailColumns;
+          return {
+            onAddRow: handleSubTableAddRow,
+            onEditRow: handleSubTableEditRow,
+            onDeleteRow: handleSubTableDeleteRow,
+            onCopyRow: handleSubTableCopyRow,
+          };
       }
+    };
 
-      // 使用子表格组合式函数初始化
-      subTabulatorComposable.initSubTabulator(
-        subTableRef.value,
-        activeSubTab.value,
-        data,
-        columns
+    // 简化的子表格初始化函数
+    const initSubTabulatorSimple = () => {
+      const eventHandlers = getSubTableEventHandlers(activeSubTab.value);
+      initSubTabulator(
+        subTabulatorComposable,
+        detailData,
+        statisticsData,
+        historyData,
+        detailColumns,
+        statisticsColumns,
+        historyColumns,
+        eventHandlers
       );
-
-      // 设置子表格事件处理器
-      subTabulatorComposable.setEventHandlers({
-        onAddRow: handleSubTableAddRow,
-        onEditRow: handleSubTableEditRow,
-        onDeleteRow: handleSubTableDeleteRow,
-        onCopyRow: handleSubTableCopyRow,
-      });
     };
 
     // 处理子标签页切换
     const handleSubTabChange = (tabName: string | number) => {
-      console.log("FbfxView: Sub tab changed to:", tabName);
-      activeSubTab.value = tabName as string;
-
-      // 重新初始化子表格
-      nextTick(() => {
-        initSubTabulator();
-      });
+      const eventHandlers = getSubTableEventHandlers(tabName as string);
+      _handleSubTabChange(
+        tabName,
+        subTabulatorComposable,
+        detailData,
+        statisticsData,
+        historyData,
+        detailColumns,
+        statisticsColumns,
+        historyColumns,
+        eventHandlers
+      );
     };
 
-    // 统计函数
-    const getFolderCount = () => {
-      const countFolders = (items: TreeTableData[]): number => {
-        let count = 0;
-        items.forEach((item) => {
-          if (item.type === "folder") {
-            count++;
-          }
-          if (item.children && item.children.length > 0) {
-            count += countFolders(item.children);
-          }
-        });
-        return count;
-      };
-      return countFolders(tableTreeData.value);
-    };
-
-    const getFileCount = () => {
-      const countFiles = (items: TreeTableData[]): number => {
-        let count = 0;
-        items.forEach((item) => {
-          if (item.type === "file") {
-            count++;
-          }
-          if (item.children && item.children.length > 0) {
-            count += countFiles(item.children);
-          }
-        });
-        return count;
-      };
-      return countFiles(tableTreeData.value);
-    };
-
-    const getCurrentTime = () => {
-      const now = new Date();
-      return now.toLocaleString("zh-CN", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-    };
-
+    // 初始化函数
     const init = (id: string | number | null) => {
       console.log("FbfxView.vue init called with ID:", id);
     };
 
     // ========== 生命周期 ==========
     onMounted(() => {
+      console.log('FbfxView mounted, 开始初始化表格');
+      console.log('mainTableRef:', mainTableRef);
+
       nextTick(() => {
+        console.log('nextTick 执行，开始检查主表格容器');
+        console.log('主表格容器引用:', mainTableRef.value);
+
         if (mainTableRef.value) {
+          console.log('主表格容器尺寸:', {
+            width: mainTableRef.value.offsetWidth,
+            height: mainTableRef.value.offsetHeight,
+            clientWidth: mainTableRef.value.clientWidth,
+            clientHeight: mainTableRef.value.clientHeight
+          });
+
+          console.log('原始数据:', tableTreeData.value);
           const convertedData = convertToMainTabulatorFormat(tableTreeData.value);
-          mainTabulatorComposable.initMainTabulator(
-            mainTableRef.value,
-            convertedData,
-            handleColorChange,
-            handleRowClick
-          );
+          console.log('转换后的主表格数据:', convertedData);
+
+          try {
+            mainTabulatorComposable.initMainTabulator(
+              mainTableRef.value,
+              convertedData,
+              handleColorChange,
+              handleRowClick
+            );
+            console.log('主表格初始化完成');
+          } catch (error) {
+            console.error('主表格初始化失败:', error);
+          }
+        } else {
+          console.error('主表格容器未找到 - mainTableRef.value 为:', mainTableRef.value);
         }
-        initSubTabulator();
+
+        console.log('开始初始化子表格');
+        try {
+          initSubTabulatorSimple();
+          console.log('子表格初始化完成');
+        } catch (error) {
+          console.error('子表格初始化失败:', error);
+        }
       });
     });
 
@@ -542,19 +239,26 @@ export default defineComponent({
     expose({ init });
 
     return {
+      // DOM refs
       mainTableRef,
-      subTableRef,
+      detailTableRef,
+      statisticsTableRef,
+      historyTableRef,
+      // 主表格数据
       tableTreeData,
       tableColumns,
+      // 子表格数据（使用新的命名避免冲突）
       activeSubTab,
-      historyData,
-      detailData,
-      statisticsData,
-      historyColumns,
-      detailColumns,
-      statisticsColumns,
+      rcjDetailData: detailData,
+      priceStructureData: statisticsData,
+      conversionHistoryData: historyData,
+      rcjDetailColumns: detailColumns,
+      priceStructureColumns: statisticsColumns,
+      conversionHistoryColumns: historyColumns,
+      // 颜色对话框
       colorDialogVisible,
       colorValue,
+      // 事件处理
       handleSubTabChange,
       handleAddRow,
       handleAddChild,
@@ -566,9 +270,45 @@ export default defineComponent({
       handleSubTableDeleteRow,
       handleSubTableCopyRow,
       handleColorSubmit,
+      openColorDialog,
+      // 工具函数
       getFolderCount,
       getFileCount,
       getCurrentTime,
+      convertToMainTabulatorFormat,
+      // 暴露专门的子表格组合式函数的方法（排除已经重新命名的数据）
+      totalAmount: rcjDetail.totalAmount,
+      categoryStats: rcjDetail.categoryStats,
+      addDetailRow: rcjDetail.addDetailRow,
+      deleteDetailRow: rcjDetail.deleteDetailRow,
+      copyDetailRow: rcjDetail.copyDetailRow,
+      editDetailRow: rcjDetail.editDetailRow,
+      updateTotalPrice: rcjDetail.updateTotalPrice,
+      exportDetailData: rcjDetail.exportDetailData,
+      // 单价构成相关方法
+      structureTotalAmount: priceStructure.totalAmount,
+      directCost: priceStructure.directCost,
+      indirectCost: priceStructure.indirectCost,
+      addStructureRow: priceStructure.addStructureRow,
+      deleteStructureRow: priceStructure.deleteStructureRow,
+      copyStructureRow: priceStructure.copyStructureRow,
+      editStructureRow: priceStructure.editStructureRow,
+      updateAmount: priceStructure.updateAmount,
+      updateCoefficients: priceStructure.updateCoefficients,
+      calculatePercentages: priceStructure.calculatePercentages,
+      getPriceStructureReport: priceStructure.getPriceStructureReport,
+      // 标准换算相关方法
+      conversionRules: standardConversion.conversionRules,
+      activeRules: standardConversion.activeRules,
+      performConversion: standardConversion.performConversion,
+      addConversionRule: standardConversion.addConversionRule,
+      deleteConversionRule: standardConversion.deleteConversionRule,
+      copyConversionRule: standardConversion.copyConversionRule,
+      editConversionRule: standardConversion.editConversionRule,
+      clearHistory: standardConversion.clearHistory,
+      exportRules: standardConversion.exportRules,
+      importRules: standardConversion.importRules,
+      batchConversion: standardConversion.batchConversion,
       // 暴露主表格组合式函数的所有方法
       ...mainTabulatorComposable,
     };
@@ -596,13 +336,13 @@ export default defineComponent({
     <div class="sub-tabs-section">
       <el-tabs v-model="activeSubTab" type="card" @tab-change="handleSubTabChange">
         <el-tab-pane label="人材机明细" name="detail">
-          <div v-if="activeSubTab === 'detail'" ref="subTableRef" class="sub-table-container"></div>
+          <div ref="detailTableRef" class="sub-table-container"></div>
         </el-tab-pane>
         <el-tab-pane label="单价构成" name="statistics">
-          <div v-if="activeSubTab === 'statistics'" ref="subTableRef" class="sub-table-container"></div>
+          <div ref="statisticsTableRef" class="sub-table-container"></div>
         </el-tab-pane>
         <el-tab-pane label="标准换算" name="history">
-          <div v-if="activeSubTab === 'history'" ref="subTableRef" class="sub-table-container"></div>
+          <div ref="historyTableRef" class="sub-table-container"></div>
         </el-tab-pane>
       </el-tabs>
     </div>
@@ -646,6 +386,8 @@ export default defineComponent({
   border-bottom: 1px solid #e4e7ed;
   overflow: hidden;
   margin-bottom: 8px;
+  min-height: 300px;
+  /* 确保最小高度 */
 }
 
 /* 下半部分：子标签页内容 */
@@ -779,6 +521,12 @@ export default defineComponent({
 .sub-table-container {
   width: 100%;
   height: 100%;
+  min-height: 280px;
+  /* 确保容器有足够高度 */
+}
+
+.main-table-container {
+  /* 移除调试样式，保持正常显示 */
 }
 
 /* Tabulator 自定义样式 */

@@ -2,6 +2,7 @@
 import { ref } from "vue";
 // @ts-ignore
 import { TabulatorFull as Tabulator } from "tabulator-tables";
+import "tabulator-tables/dist/css/tabulator.min.css";
 import { ElMessage } from "element-plus";
 
 // 接口定义
@@ -21,7 +22,9 @@ interface SubTableData {
 }
 
 export function useSubTabulator() {
-  const subTabulator = ref<any>(null);
+  // 为每个标签页维护独立的实例
+  const subTabulators = ref<Record<string, any>>({});
+  const currentActiveTab = ref<string>("detail");
 
   // 默认数据
   const defaultData = {
@@ -118,7 +121,6 @@ export function useSubTabulator() {
   // 当前数据状态
   const currentData = ref<SubTableData[]>([]);
   const currentColumns = ref<TableColumn[]>([]);
-  const activeTab = ref<string>("detail");
 
   // 事件处理函数
   const eventHandlers = {
@@ -174,7 +176,7 @@ export function useSubTabulator() {
     if (!element) return;
 
     // 设置当前活动标签
-    activeTab.value = tabName;
+    currentActiveTab.value = tabName;
 
     // 确定数据和列配置
     const data =
@@ -188,12 +190,12 @@ export function useSubTabulator() {
     currentColumns.value = columns;
 
     // 销毁旧实例
-    if (subTabulator.value) {
-      subTabulator.value.destroy();
+    if (subTabulators.value[tabName]) {
+      subTabulators.value[tabName].destroy();
     }
 
     // 创建新的 Tabulator 实例
-    subTabulator.value = new Tabulator(element, {
+    subTabulators.value[tabName] = new Tabulator(element, {
       data: data,
       columns: getColumns(columns),
       layout: "fitColumns",
@@ -224,10 +226,10 @@ export function useSubTabulator() {
 
   // 更新数据
   const updateData = (newData: SubTableData[]) => {
-    if (!subTabulator.value) return;
+    if (!subTabulators.value[currentActiveTab.value]) return;
     currentData.value = newData;
     // @ts-ignore
-    subTabulator.value.setData(newData);
+    subTabulators.value[currentActiveTab.value].setData(newData);
   };
 
   // 切换标签页
@@ -244,22 +246,24 @@ export function useSubTabulator() {
   const exportedMethods = {
     // 数据查询方法
     getCurrentData: () => {
-      if (!subTabulator.value) return [];
+      if (!subTabulators.value[currentActiveTab.value]) return [];
       // @ts-ignore
-      return subTabulator.value.getData() as SubTableData[];
+      return subTabulators.value[
+        currentActiveTab.value
+      ].getData() as SubTableData[];
     },
 
     getAllRows: () => {
-      if (!subTabulator.value) return [];
+      if (!subTabulators.value[currentActiveTab.value]) return [];
       // @ts-ignore
-      return subTabulator.value.getRows();
+      return subTabulators.value[currentActiveTab.value].getRows();
     },
 
     getRowById: (id: string | number) => {
-      if (!subTabulator.value) return null;
+      if (!subTabulators.value[currentActiveTab.value]) return null;
       try {
         // @ts-ignore
-        const row = subTabulator.value.getRow(id);
+        const row = subTabulators.value[currentActiveTab.value].getRow(id);
         return row ? (row.getData() as SubTableData) : null;
       } catch {
         return null;
@@ -267,19 +271,22 @@ export function useSubTabulator() {
     },
 
     getSelectedRows: () => {
-      if (!subTabulator.value) return [];
+      if (!subTabulators.value[currentActiveTab.value]) return [];
       // @ts-ignore
-      return subTabulator.value
+      return subTabulators.value[currentActiveTab.value]
         .getSelectedRows()
         .map((row: any) => row.getData() as SubTableData);
     },
 
     // 数据操作方法
     addRow: (data: SubTableData, position?: "top" | "bottom") => {
-      if (!subTabulator.value) return false;
+      if (!subTabulators.value[currentActiveTab.value]) return false;
       try {
         // @ts-ignore
-        subTabulator.value.addRow(data, position === "top");
+        subTabulators.value[currentActiveTab.value].addRow(
+          data,
+          position === "top"
+        );
         currentData.value.push(data);
         return true;
       } catch {
@@ -288,10 +295,10 @@ export function useSubTabulator() {
     },
 
     updateRow: (id: string | number, data: Partial<SubTableData>) => {
-      if (!subTabulator.value) return false;
+      if (!subTabulators.value[currentActiveTab.value]) return false;
       try {
         // @ts-ignore
-        const row = subTabulator.value.getRow(id);
+        const row = subTabulators.value[currentActiveTab.value].getRow(id);
         if (row) {
           // @ts-ignore
           row.update(data);
@@ -304,10 +311,10 @@ export function useSubTabulator() {
     },
 
     deleteRow: (id: string | number) => {
-      if (!subTabulator.value) return false;
+      if (!subTabulators.value[currentActiveTab.value]) return false;
       try {
         // @ts-ignore
-        const row = subTabulator.value.getRow(id);
+        const row = subTabulators.value[currentActiveTab.value].getRow(id);
         if (row) {
           // @ts-ignore
           row.delete();
@@ -326,10 +333,10 @@ export function useSubTabulator() {
 
     // 选择操作方法
     selectRow: (id: string | number) => {
-      if (!subTabulator.value) return false;
+      if (!subTabulators.value[currentActiveTab.value]) return false;
       try {
         // @ts-ignore
-        const row = subTabulator.value.getRow(id);
+        const row = subTabulators.value[currentActiveTab.value].getRow(id);
         if (row) {
           // @ts-ignore
           row.select();
@@ -342,84 +349,94 @@ export function useSubTabulator() {
     },
 
     selectAll: () => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.selectRow();
+      subTabulators.value[currentActiveTab.value].selectRow();
     },
 
     deselectAll: () => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.deselectRow();
+      subTabulators.value[currentActiveTab.value].deselectRow();
     },
 
     // 排序和过滤方法
     sortBy: (field: string, direction: "asc" | "desc") => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.setSort(field, direction);
+      subTabulators.value[currentActiveTab.value].setSort(field, direction);
     },
 
     setFilter: (field: string, type: string, value: any) => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.setFilter(field, type, value);
+      subTabulators.value[currentActiveTab.value].setFilter(field, type, value);
     },
 
     clearFilter: () => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.clearFilter();
+      subTabulators.value[currentActiveTab.value].clearFilter();
     },
 
     // 导出方法
     exportToCSV: (filename?: string) => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.download("csv", filename || "sub_table_data.csv");
+      subTabulators.value[currentActiveTab.value].download(
+        "csv",
+        filename || "sub_table_data.csv"
+      );
     },
 
     exportToJSON: (filename?: string) => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.download("json", filename || "sub_table_data.json");
+      subTabulators.value[currentActiveTab.value].download(
+        "json",
+        filename || "sub_table_data.json"
+      );
     },
 
     // 工具方法
     refresh: () => {
-      if (!subTabulator.value) return;
+      if (!subTabulators.value[currentActiveTab.value]) return;
       // @ts-ignore
-      subTabulator.value.redraw();
+      subTabulators.value[currentActiveTab.value].redraw();
     },
 
     destroy: () => {
-      if (subTabulator.value) {
-        // @ts-ignore
-        subTabulator.value.destroy();
-        subTabulator.value = null;
-      }
+      // 销毁所有标签页的实例
+      Object.keys(subTabulators.value).forEach((tabName) => {
+        if (subTabulators.value[tabName]) {
+          // @ts-ignore
+          subTabulators.value[tabName].destroy();
+        }
+      });
+      subTabulators.value = {};
     },
 
     // 获取表格状态
     getTableStats: () => {
-      if (!subTabulator.value) return null;
+      if (!subTabulators.value[currentActiveTab.value]) return null;
       // @ts-ignore
-      const allRows = subTabulator.value.getRows();
+      const allRows = subTabulators.value[currentActiveTab.value].getRows();
       // @ts-ignore
-      const selectedRows = subTabulator.value.getSelectedRows();
+      const selectedRows =
+        subTabulators.value[currentActiveTab.value].getSelectedRows();
       return {
         totalRows: allRows.length,
         selectedRows: selectedRows.length,
-        activeTab: activeTab.value,
+        activeTab: currentActiveTab.value,
       };
     },
   };
 
   return {
-    subTabulator,
+    subTabulators,
     currentData,
     currentColumns,
-    activeTab,
+    currentActiveTab,
     defaultData,
     defaultColumns,
     initSubTabulator,

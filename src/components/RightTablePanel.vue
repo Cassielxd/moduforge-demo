@@ -3,7 +3,7 @@ import { defineComponent, ref, reactive, onMounted, onUnmounted, nextTick, watch
 import type { PropType } from "vue";
 import { ElMessage, ElMessageBox, ElDialog, ElButton, ElColorPicker, ElIcon } from "element-plus";
 // @ts-ignore
-import { Tabulator } from 'tabulator-tables';
+import { TabulatorFull as Tabulator } from 'tabulator-tables';
 // @ts-ignore
 import type { RowComponent, CellComponent, TabulatorConfig } from 'tabulator-tables';
 import 'tabulator-tables/dist/css/tabulator.min.css';
@@ -80,152 +80,97 @@ export default defineComponent({
 
     // 初始化 Tabulator
     const initTabulator = () => {
-      if (!tableRef.value) return;
+      console.log("RightTablePanel: 开始初始化 Tabulator");
+      console.log("tableRef.value:", tableRef.value);
+      console.log("props.tableData:", props.tableData);
+      console.log("props.tableColumns:", props.tableColumns);
 
-      // 转换列配置
-      const columns = [
-        // 如果是树形表格，添加树形列
-        ...(props.isTreeTable ? [{
-          title: "",
-          field: "tree_control",
-          width: 150,
-          headerSort: false,
-          formatter: "tree",
-          headerClick: false,
-          cellClick: false,
-        }] : [{
-          title: "",
-          width: 50,
-          headerSort: false,
-          formatter: () => ""
-        }]),
-        // 数据列
-        ...props.tableColumns.map(col => ({
-          title: col.label,
-          field: col.prop,
-          width: col.width || col.minWidth || 120,
-          headerSort: true,
-          editor: "input",
-          formatter: (cell: CellComponent) => {
-            const data = cell.getRow().getData();
-            const value = data[col.prop];
-
-            if (props.isTreeTable && col.prop === 'name') {
-              const iconHtml = data.type === 'folder'
-                ? '<i class="folder-icon">📁</i>'
-                : '<i class="file-icon">📄</i>';
-              return `<div class="tree-name-cell">${iconHtml}<span>${value || ''}</span></div>`;
-            }
-
-            if (props.isTreeTable && col.prop === 'type') {
-              const typeText = data.type === 'folder' ? '文件夹' : '文件';
-              const typeClass = data.type === 'folder' ? 'folder-tag' : 'file-tag';
-              return `<span class="type-tag ${typeClass}">${typeText}</span>`;
-            }
-
-            if (col.prop === "size" && data.type === "folder") {
-              return "-";
-            }
-
-            return value || '';
-          },
-          cellEdited: (cell: CellComponent) => {
-            const row = cell.getRow();
-            const data = row.getData();
-            isEditing.value = true; // 设置编辑标志
-            localTableData.value = tabulator.value?.getData() || [];
-            emit("update:tableData", localTableData.value);
-
-            // 延迟重置编辑标志
-            setTimeout(() => {
-              isEditing.value = false;
-            }, 100);
-          }
-        }))
-      ];
-
-      // 配置 Tabulator
-      const config: any = {
-        data: localTableData.value,
-        columns: columns,
-        layout: "fitColumns",
-        height: "100%",
-        rowContextMenu: [
-          {
-            label: "添加行",
-            action: (e: Event, row: RowComponent) => {
-              currentTableItem.value = row.getData() as TableItem;
-              emit("add-row", currentTableItem.value);
-            }
-          },
-          {
-            label: "编辑",
-            action: (e: Event, row: RowComponent) => {
-              currentTableItem.value = row.getData() as TableItem;
-              emit("edit-row", currentTableItem.value);
-            }
-          },
-          {
-            label: "删除",
-            action: (e: Event, row: RowComponent) => {
-              currentTableItem.value = row.getData() as TableItem;
-              emit("delete-row", currentTableItem.value);
-            }
-          },
-          {
-            label: "复制",
-            action: (e: Event, row: RowComponent) => {
-              currentTableItem.value = row.getData() as TableItem;
-              emit("copy-row", currentTableItem.value);
-            }
-          },
-          {
-            label: "添加子项",
-            action: (e: Event, row: RowComponent) => {
-              currentTableItem.value = row.getData() as TableItem;
-              debugger;
-              emit("add-child", currentTableItem.value, row);
-            }
-          },
-          {
-            label: "设置边框颜色",
-            action: (e: Event, row: RowComponent) => {
-              currentTableItem.value = row.getData() as TableItem;
-              openColorDialog();
-            }
-          }
-        ],
-        rowFormatter: (row: RowComponent) => {
-          const data = row.getData();
-          if (data.color && data.color.trim()) {
-            const element = row.getElement();
-            element.style.border = `2px solid ${data.color}`;
-            element.classList.add('colored-border');
-          }
-        }
-      };
-
-      // 如果是树形表格，添加树形配置
-      if (props.isTreeTable) {
-        config.dataTree = true;
-        config.dataTreeChildField = "children";
-        config.dataTreeStartExpanded = false;
+      if (!tableRef.value) {
+        console.error("RightTablePanel: tableRef.value 为空，无法初始化");
+        return;
       }
 
-      tabulator.value = new Tabulator(tableRef.value, config);
-
-      // 监听行选择
-      tabulator.value.on("rowClick", (e: Event, row: RowComponent) => {
-        currentRowKey.value = row.getData().id;
-
-        // 清除所有行的选中状态
-        tabulator.value?.getRows().forEach((r: RowComponent) => {
-          r.getElement().classList.remove('row-selected');
-        });
-
-        // 为当前选中行添加选中样式
-        row.getElement().classList.add('row-selected');
+      console.log("RightTablePanel: 容器尺寸:", {
+        width: tableRef.value.offsetWidth,
+        height: tableRef.value.offsetHeight,
+        clientWidth: tableRef.value.clientWidth,
+        clientHeight: tableRef.value.clientHeight
       });
+
+      // 使用最简单的配置进行测试
+      const simpleConfig = {
+        data: props.tableData.length > 0 ? props.tableData : [
+          { id: 1, name: "测试数据1", value: "值1" },
+          { id: 2, name: "测试数据2", value: "值2" }
+        ],
+        columns: [
+          { title: "ID", field: "id", width: 100 },
+          { title: "名称", field: props.tableColumns[0]?.prop || "name", width: 200 },
+          { title: "值", field: props.tableColumns[1]?.prop || "value", width: 200 }
+        ],
+        height: "100%",
+        layout: "fitColumns"
+      };
+
+      console.log("RightTablePanel: 使用简化配置:", simpleConfig);
+
+      try {
+        tabulator.value = new Tabulator(tableRef.value, simpleConfig);
+        console.log("RightTablePanel: Tabulator 实例创建成功:", tabulator.value);
+
+        // 验证表格是否渲染成功
+        setTimeout(() => {
+          console.log("RightTablePanel: 延迟检查 - 表格行数:", tabulator.value?.getRows().length);
+          console.log("RightTablePanel: 延迟检查 - 表格数据:", tabulator.value?.getData());
+          console.log("RightTablePanel: 延迟检查 - 表格DOM:", tableRef.value?.innerHTML);
+        }, 1000);
+
+      } catch (error) {
+        console.error("RightTablePanel: Tabulator 实例创建失败:", error);
+
+        // 如果Tabulator创建失败，尝试手动创建一个简单的HTML表格作为fallback
+        if (tableRef.value) {
+          tableRef.value.innerHTML = `
+            <div style="border: 1px solid #ccc; padding: 10px;">
+              <h4>表格加载失败，使用简单HTML显示:</h4>
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: #f5f5f5;">
+                    <th style="border: 1px solid #ccc; padding: 8px;">ID</th>
+                    <th style="border: 1px solid #ccc; padding: 8px;">名称</th>
+                    <th style="border: 1px solid #ccc; padding: 8px;">值</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${props.tableData.map(item => `
+                    <tr>
+                      <td style="border: 1px solid #ccc; padding: 8px;">${item.id}</td>
+                      <td style="border: 1px solid #ccc; padding: 8px;">${item[props.tableColumns[0]?.prop] || '无数据'}</td>
+                      <td style="border: 1px solid #ccc; padding: 8px;">${item[props.tableColumns[1]?.prop] || '无数据'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      // 监听行选择 - 只有在Tabulator成功创建后才添加监听器
+      if (tabulator.value) {
+        tabulator.value.on("rowClick", (e: Event, row: RowComponent) => {
+          currentRowKey.value = row.getData().id;
+
+          // 清除所有行的选中状态
+          tabulator.value?.getRows().forEach((r: RowComponent) => {
+            r.getElement().classList.remove('row-selected');
+          });
+
+          // 为当前选中行添加选中样式
+          row.getElement().classList.add('row-selected');
+        });
+      }
     };
 
     const handleTableContextMenu = (row: TableItem, column: any, event: MouseEvent) => {
@@ -385,18 +330,28 @@ export default defineComponent({
         if (isEditOperation) {
           // 如果是编辑操作，只更新数据，不重建表格
           // 保存当前的展开状态
-          const expandedRows = tabulator.value.getRows().filter((row: RowComponent) => row.isTreeExpanded()).map((row: RowComponent) => row.getData().id);
+          const expandedRows = tabulator.value.getRows()
+            .filter((row: RowComponent) => {
+              // 安全检查：确保isTreeExpanded方法存在且为树形表格
+              return props.isTreeTable &&
+                typeof (row as any).isTreeExpanded === 'function' &&
+                (row as any).isTreeExpanded();
+            })
+            .map((row: RowComponent) => row.getData().id);
 
           // 更新数据
           tabulator.value.setData(newData);
 
           // 恢复展开状态
           nextTick(() => {
-            if (tabulator.value) {
+            if (tabulator.value && props.isTreeTable) {
               expandedRows.forEach((id: string | number) => {
                 const row = tabulator.value!.getRows().find((r: RowComponent) => r.getData().id === id);
                 if (row && row.getData().children && row.getData().children.length > 0) {
-                  row.treeExpand();
+                  // 安全检查：确保treeExpand方法存在
+                  if (typeof (row as any).treeExpand === 'function') {
+                    (row as any).treeExpand();
+                  }
                 }
               });
             }
@@ -499,7 +454,10 @@ export default defineComponent({
       const rows = tabulator.value.getRows();
       rows.forEach((row: RowComponent) => {
         if (row.getData().children && row.getData().children.length > 0) {
-          row.treeExpand();
+          // 安全检查：确保treeExpand方法存在
+          if (typeof (row as any).treeExpand === 'function') {
+            (row as any).treeExpand();
+          }
         }
       });
     };
@@ -508,8 +466,11 @@ export default defineComponent({
       if (!tabulator.value || !props.isTreeTable) return;
       const rows = tabulator.value.getRows();
       rows.forEach((row: RowComponent) => {
-        if (row.isTreeExpanded()) {
-          row.treeCollapse();
+        // 安全检查：确保isTreeExpanded和treeCollapse方法存在
+        if (typeof (row as any).isTreeExpanded === 'function' &&
+          typeof (row as any).treeCollapse === 'function' &&
+          (row as any).isTreeExpanded()) {
+          (row as any).treeCollapse();
         }
       });
     };
@@ -519,8 +480,11 @@ export default defineComponent({
       const rows = tabulator.value.getRows();
       const targetRow = rows.find((row: RowComponent) => row.getData().id === id);
       if (targetRow && targetRow.getData().children && targetRow.getData().children.length > 0) {
-        targetRow.treeExpand();
-        return true;
+        // 安全检查：确保treeExpand方法存在
+        if (typeof (targetRow as any).treeExpand === 'function') {
+          (targetRow as any).treeExpand();
+          return true;
+        }
       }
       return false;
     };
@@ -529,8 +493,11 @@ export default defineComponent({
       if (!tabulator.value || !props.isTreeTable) return false;
       const rows = tabulator.value.getRows();
       const targetRow = rows.find((row: RowComponent) => row.getData().id === id);
-      if (targetRow && targetRow.isTreeExpanded()) {
-        targetRow.treeCollapse();
+      if (targetRow &&
+        typeof (targetRow as any).isTreeExpanded === 'function' &&
+        typeof (targetRow as any).treeCollapse === 'function' &&
+        (targetRow as any).isTreeExpanded()) {
+        (targetRow as any).treeCollapse();
         return true;
       }
       return false;
@@ -858,6 +825,8 @@ export default defineComponent({
 .tabulator-table {
   flex: 1;
   height: 100%;
+  min-height: 300px;
+  /* 确保最小高度 */
 }
 
 /* Tabulator 自定义样式 */
