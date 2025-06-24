@@ -10,6 +10,32 @@ export function useFbfxActions(
   const currentTableItem = ref<TreeTableData | null>(null);
   const currentRowKey = ref<string | number | null>(null);
 
+  // 查找行数据的通用函数
+  const findRowById = (
+    data: TreeTableData[],
+    id: string | number
+  ): TreeTableData | null => {
+    for (const item of data) {
+      if (String(item.id) === String(id)) {
+        return item;
+      }
+      if (item.children) {
+        const found = findRowById(item.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // 获取目标行的通用函数（优先使用传入的row，否则使用当前选中的行）
+  const getTargetRow = (row?: TreeTableData): TreeTableData | null => {
+    if (row) return row;
+    if (currentRowKey.value) {
+      return findRowById(tableTreeData.value, currentRowKey.value);
+    }
+    return null;
+  };
+
   // 颜色变化处理函数
   const handleColorChange = (id: string, color: string) => {
     // 在原始数据中更新颜色
@@ -45,6 +71,14 @@ export function useFbfxActions(
       date: new Date().toISOString().split("T")[0],
     };
 
+    // 如果没有传入currentRow，尝试获取当前选中的行
+    if (!currentRow) {
+      const foundRow = getTargetRow();
+      if (foundRow) {
+        currentRow = foundRow;
+      }
+    }
+
     if (currentRow) {
       // 在指定行的下一行插入新行
       const insertAfter = (
@@ -69,11 +103,9 @@ export function useFbfxActions(
         // 如果没有找到指定行，就添加到末尾
         tableTreeData.value.push(newRow);
       }
-      ElMessage.success("在选中行下方添加成功");
     } else {
       // 没有指定行时，添加到末尾
       tableTreeData.value.push(newRow);
-      ElMessage.success("添加成功");
     }
 
     // 选中新添加的行
@@ -103,13 +135,26 @@ export function useFbfxActions(
   };
 
   // 编辑行
-  const handleEditRow = (row: TreeTableData) => {
-    ElMessage.info("编辑功能，可以双击单元格编辑");
+  const handleEditRow = (row?: TreeTableData) => {
+    const targetRow = getTargetRow(row);
+
+    if (targetRow) {
+      ElMessage.info(`选中编辑行: ${targetRow.name}，双击单元格进行编辑`);
+    } else {
+      ElMessage.info("请先选择要编辑的行，然后双击单元格进行编辑");
+    }
   };
 
   // 删除行
-  const handleDeleteRow = (row: TreeTableData) => {
-    ElMessageBox.confirm("确定要删除这一行吗？", "警告", {
+  const handleDeleteRow = (row?: TreeTableData) => {
+    const targetRow = getTargetRow(row);
+
+    if (!targetRow) {
+      ElMessage.warning("请先选择要删除的行");
+      return;
+    }
+
+    ElMessageBox.confirm(`确定要删除 "${targetRow.name}" 吗？`, "警告", {
       confirmButtonText: "确定",
       cancelButtonText: "取消",
       type: "warning",
@@ -121,7 +166,8 @@ export function useFbfxActions(
           targetId: number | string
         ): boolean => {
           for (let i = 0; i < data.length; i++) {
-            if (data[i].id === targetId) {
+            // 使用字符串比较确保匹配
+            if (String(data[i].id) === String(targetId)) {
               data.splice(i, 1);
               return true;
             }
@@ -132,23 +178,37 @@ export function useFbfxActions(
           return false;
         };
 
-        deleteNode(tableTreeData.value, row.id);
-        ElMessage.success("删除成功");
+        if (deleteNode(tableTreeData.value, targetRow!.id)) {
+          ElMessage.success("删除成功");
+          // 清空当前选中行
+          if (String(currentRowKey.value) === String(targetRow!.id)) {
+            currentRowKey.value = null;
+          }
+        } else {
+          ElMessage.error("删除失败，未找到指定行");
+        }
       })
       .catch(() => {});
   };
 
   // 复制行
-  const handleCopyRow = (row: TreeTableData) => {
+  const handleCopyRow = (row?: TreeTableData) => {
+    const targetRow = getTargetRow(row);
+
+    if (!targetRow) {
+      ElMessage.warning("请先选择要复制的行");
+      return;
+    }
+
     const newItem: TreeTableData = {
-      ...row,
+      ...targetRow,
       id: Date.now(),
-      name: `${row.name} (复制)`,
+      name: `${targetRow.name} (复制)`,
       children: undefined, // 复制时不包含子项
     };
     tableTreeData.value.push(newItem);
 
-    ElMessage.success("复制成功");
+    ElMessage.success(`复制成功: ${targetRow.name}`);
 
     // 选中复制的新行
     nextTick(() => {
@@ -169,7 +229,7 @@ export function useFbfxActions(
   };
 
   const handleSubTableEditRow = (row: any) => {
-    ElMessage.info("子表格编辑功能，可以双击单元格编辑");
+    ElMessage.info("子表格编辑功能，双击单元格进行编辑");
   };
 
   const handleSubTableDeleteRow = (row: any) => {

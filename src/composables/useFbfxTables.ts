@@ -72,17 +72,18 @@ export function useFbfxTables() {
 
     console.log("子表格数据:", data);
     console.log("子表格列配置:", columns);
+    console.log("子表格事件处理器:", eventHandlers);
 
-    // 使用子表格组合式函数初始化
+    // 先设置子表格事件处理器
+    subTabulatorComposable.setEventHandlers(eventHandlers);
+
+    // 然后使用子表格组合式函数初始化
     subTabulatorComposable.initSubTabulator(
       currentRef,
       activeSubTab.value,
       data,
       columns
     );
-
-    // 设置子表格事件处理器
-    subTabulatorComposable.setEventHandlers(eventHandlers);
 
     console.log("子表格初始化完成");
   };

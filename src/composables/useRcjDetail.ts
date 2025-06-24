@@ -11,6 +11,7 @@ export interface RcjDetailItem {
   unitPrice: number; // 单价
   totalPrice: number; // 合价
   remark?: string; // 备注
+  children?: RcjDetailItem[]; // 子项
 }
 
 export function useRcjDetail() {
@@ -26,6 +27,19 @@ export function useRcjDetail() {
       unitPrice: 150.0,
       totalPrice: 375.0,
       remark: "技术工人",
+      children: [
+        {
+          id: 11,
+          category: "人工",
+          name: "普通工",
+          specification: "8小时工日",
+          unit: "工日",
+          quantity: 2.5,
+          unitPrice: 150.0,
+          totalPrice: 375.0,
+          remark: "技术工人",
+        },
+      ],
     },
     {
       id: 2,

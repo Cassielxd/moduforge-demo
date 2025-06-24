@@ -3,6 +3,7 @@ import { ref, nextTick } from "vue";
 // @ts-ignore
 import { TabulatorFull as Tabulator } from "tabulator-tables";
 import "tabulator-tables/dist/css/tabulator.min.css";
+import { ElMessage } from "element-plus";
 
 // 接口定义
 interface TableItem {
@@ -33,6 +34,30 @@ export function useMainTabulator() {
     filters: [],
     sorting: [],
   });
+
+  // 事件处理函数
+  const eventHandlers = {
+    onAddRow: () => {
+      ElMessage.info("主表格新增功能");
+    },
+    onEditRow: (row: any) => {
+      ElMessage.info("主表格编辑功能，可以双击单元格编辑");
+    },
+    onDeleteRow: (row: any) => {
+      ElMessage.info("主表格删除功能");
+    },
+    onCopyRow: (row: any) => {
+      ElMessage.info("主表格复制功能");
+    },
+    onCellEdited: (cell: any) => {
+      ElMessage.info("主表格编辑功能");
+    },
+  };
+
+  // 设置事件处理器
+  const setEventHandlers = (handlers: Partial<typeof eventHandlers>) => {
+    Object.assign(eventHandlers, handlers);
+  };
 
   // 保存表格状态
   const saveTableState = () => {
@@ -179,9 +204,11 @@ export function useMainTabulator() {
       dataTreeChildIndent: 20,
       selectable: true,
       rowFormatter: rowFormatter,
+      editTriggerEvent: "dblclick", // 设置双击编辑
       cellEdited: (cell: any) => {
         isEditing.value = true;
         console.log("Cell edited:", cell.getData());
+        eventHandlers.onCellEdited(cell);
       },
       rowClick: (e: UIEvent, row: any) => {
         const data = row.getData() as TableItem;
@@ -189,10 +216,41 @@ export function useMainTabulator() {
           onRowClick(data);
         }
       },
-      rowContext: (e: UIEvent, row: any) => {
-        e.preventDefault();
-        console.log("Right click on row:", row.getData());
+      rowDblClick: (e: UIEvent, row: any) => {
+        console.log("双击行:", row.getData());
+        // 双击行时可以触发编辑事件
+        eventHandlers.onEditRow(row.getData());
       },
+      rowContextMenu: [
+        {
+          label: "添加行",
+          action: () => {
+            console.log("右键菜单 - 添加行被点击");
+            eventHandlers.onAddRow();
+          },
+        },
+        {
+          label: "编辑",
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 编辑被点击，行数据:", row.getData());
+            eventHandlers.onEditRow(row.getData());
+          },
+        },
+        {
+          label: "删除",
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 删除被点击，行数据:", row.getData());
+            eventHandlers.onDeleteRow(row.getData());
+          },
+        },
+        {
+          label: "复制",
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 复制被点击，行数据:", row.getData());
+            eventHandlers.onCopyRow(row.getData());
+          },
+        },
+      ],
     });
 
     console.log("Tabulator instance created:", mainTabulator.value);
@@ -566,6 +624,7 @@ export function useMainTabulator() {
     mainTabulator,
     initMainTabulator,
     updateData,
+    setEventHandlers,
     ...exportedMethods,
   };
 }

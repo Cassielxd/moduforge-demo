@@ -114,24 +114,66 @@ export default defineComponent({
       switch (tabName) {
         case 'detail':
           return {
-            onAddRow: rcjDetail.addDetailRow,
-            onEditRow: rcjDetail.editDetailRow,
-            onDeleteRow: rcjDetail.deleteDetailRow,
-            onCopyRow: rcjDetail.copyDetailRow,
+            onAddRow: () => {
+              rcjDetail.addDetailRow();
+              ElMessage.success("添加成功");
+            },
+            onEditRow: (row: any) => {
+              rcjDetail.editDetailRow(row);
+              ElMessage.info("可以双击单元格进行编辑");
+            },
+            onDeleteRow: (row: any) => {
+              const success = rcjDetail.deleteDetailRow(row);
+              if (success) {
+                ElMessage.success("删除成功");
+              }
+            },
+            onCopyRow: (row: any) => {
+              rcjDetail.copyDetailRow(row);
+              ElMessage.success("复制成功");
+            },
           };
         case 'statistics':
           return {
-            onAddRow: priceStructure.addStructureRow,
-            onEditRow: priceStructure.editStructureRow,
-            onDeleteRow: priceStructure.deleteStructureRow,
-            onCopyRow: priceStructure.copyStructureRow,
+            onAddRow: () => {
+              priceStructure.addStructureRow();
+              ElMessage.success("添加成功");
+            },
+            onEditRow: (row: any) => {
+              priceStructure.editStructureRow(row);
+              ElMessage.info("可以双击单元格进行编辑");
+            },
+            onDeleteRow: (row: any) => {
+              const success = priceStructure.deleteStructureRow(row);
+              if (success) {
+                ElMessage.success("删除成功");
+              }
+            },
+            onCopyRow: (row: any) => {
+              priceStructure.copyStructureRow(row);
+              ElMessage.success("复制成功");
+            },
           };
         case 'history':
           return {
-            onAddRow: standardConversion.addConversionRule,
-            onEditRow: standardConversion.editConversionRule,
-            onDeleteRow: standardConversion.deleteConversionRule,
-            onCopyRow: standardConversion.copyConversionRule,
+            onAddRow: () => {
+              standardConversion.addConversionRule();
+              ElMessage.success("添加成功");
+            },
+            onEditRow: (row: any) => {
+              standardConversion.editConversionRule(row);
+              ElMessage.info("可以双击单元格进行编辑");
+            },
+            onDeleteRow: (row: any) => {
+              const success = standardConversion.deleteConversionRule(row);
+              if (success) {
+                ElMessage.success("删除成功");
+              }
+            },
+            onCopyRow: (row: any) => {
+              standardConversion.copyConversionRule(row);
+              ElMessage.success("复制成功");
+            },
           };
         default:
           return {
@@ -201,6 +243,23 @@ export default defineComponent({
           console.log('转换后的主表格数据:', convertedData);
 
           try {
+            // 设置主表格的事件处理器，关联useFbfxActions中的函数
+            mainTabulatorComposable.setEventHandlers({
+              onAddRow: () => {
+                handleAddRow();
+                ElMessage.success("添加成功");
+              },
+              onEditRow: (row: any) => {
+                handleEditRow(row);
+              },
+              onDeleteRow: (row: any) => {
+                handleDeleteRow(row);
+              },
+              onCopyRow: (row: any) => {
+                handleCopyRow(row);
+              },
+            });
+
             mainTabulatorComposable.initMainTabulator(
               mainTableRef.value,
               convertedData,
@@ -230,10 +289,29 @@ export default defineComponent({
       subTabulatorComposable.destroy();
     });
 
-    // 监听数据变化
+    // 监听主表格数据变化
     watch(() => tableTreeData.value, (newData) => {
       const convertedData = convertToMainTabulatorFormat(newData);
       mainTabulatorComposable.updateData(convertedData);
+    }, { deep: true });
+
+    // 监听子表格数据变化
+    watch(() => detailData.value, (newData) => {
+      if (activeSubTab.value === 'detail') {
+        subTabulatorComposable.updateData(newData);
+      }
+    }, { deep: true });
+
+    watch(() => statisticsData.value, (newData) => {
+      if (activeSubTab.value === 'statistics') {
+        subTabulatorComposable.updateData(newData);
+      }
+    }, { deep: true });
+
+    watch(() => historyData.value, (newData) => {
+      if (activeSubTab.value === 'history') {
+        subTabulatorComposable.updateData(newData);
+      }
     }, { deep: true });
 
     expose({ init });
@@ -512,17 +590,22 @@ export default defineComponent({
 }
 
 :deep(.el-tab-pane) {
-  height: 100%;
+  height: calc(100% - 16px);
   overflow: hidden;
 }
 
 /* 表格容器样式 */
-.main-table-container,
-.sub-table-container {
+.main-table-container {
   width: 100%;
   height: 100%;
   min-height: 280px;
-  /* 确保容器有足够高度 */
+}
+
+.sub-table-container {
+  width: 100%;
+  height: 300px;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
 }
 
 .main-table-container {
@@ -531,8 +614,8 @@ export default defineComponent({
 
 /* Tabulator 自定义样式 */
 :deep(.tabulator) {
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  border: none !important;
+  border-radius: 0;
   background: #fff;
 }
 

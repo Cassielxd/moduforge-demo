@@ -195,33 +195,63 @@ export function useSubTabulator() {
     }
 
     // 创建新的 Tabulator 实例
+    console.log("创建Tabulator实例，当前事件处理器:", eventHandlers);
+
     subTabulators.value[tabName] = new Tabulator(element, {
       data: data,
       columns: getColumns(columns),
+      dataTree: true,
+      dataTreeChildField: "children",
+      dataTreeStartExpanded: true,
+      dataTreeBranchElement: true,
+      dataTreeChildIndent: 20,
       layout: "fitColumns",
-      height: "100%",
+      selectable: true,
+      height: 400,
+      maxHeight: 300,
+      editTriggerEvent: "dblclick", // 设置双击编辑
+      cellEdited: (cell: any) => {
+        console.log("子表格单元格编辑:", cell.getData());
+        eventHandlers.onCellEdited(cell);
+      },
+      rowDblClick: (e: UIEvent, row: any) => {
+        console.log("双击子表格行:", row.getData());
+        // 双击行时可以触发编辑事件
+        eventHandlers.onEditRow(row.getData());
+      },
       rowContextMenu: [
         {
           label: "添加行",
-          action: () => eventHandlers.onAddRow(),
+          action: () => {
+            console.log("右键菜单 - 添加行被点击");
+            eventHandlers.onAddRow();
+          },
         },
         {
           label: "编辑",
-          action: (e: Event, row: any) =>
-            eventHandlers.onEditRow(row.getData()),
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 编辑被点击，行数据:", row.getData());
+            eventHandlers.onEditRow(row.getData());
+          },
         },
         {
           label: "删除",
-          action: (e: Event, row: any) =>
-            eventHandlers.onDeleteRow(row.getData()),
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 删除被点击，行数据:", row.getData());
+            eventHandlers.onDeleteRow(row.getData());
+          },
         },
         {
           label: "复制",
-          action: (e: Event, row: any) =>
-            eventHandlers.onCopyRow(row.getData()),
+          action: (e: Event, row: any) => {
+            console.log("右键菜单 - 复制被点击，行数据:", row.getData());
+            eventHandlers.onCopyRow(row.getData());
+          },
         },
       ],
     });
+
+    console.log("Tabulator实例创建完成:", tabName);
   };
 
   // 更新数据

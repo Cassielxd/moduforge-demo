@@ -29,24 +29,6 @@ const menuItems = ref([
     path: "/"
   },
   {
-    name: "cxxm",
-    label: "查询下明",
-    icon: Document,
-    path: "/cxxm"
-  },
-  {
-    name: "fbfx",
-    label: "分部分项",
-    icon: View,
-    path: "/fbfx"
-  },
-  {
-    name: "project-info",
-    label: "项目信息",
-    icon: Setting,
-    path: "/project-info"
-  },
-  {
     name: "history",
     label: "历史记录",
     icon: Clock,
