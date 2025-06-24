@@ -1,18 +1,29 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_trait::async_trait;
-use axum::{extract::Path, routing::{get, post}, Json, Router};
-use moduforge_core::{types::NodePoolFnTrait, ForgeResult};
-use moduforge_model::{
-    id_generator::IdGenerator, node::Node, node_pool::NodePool,
-
+use axum::{
+    extract::Path,
+    routing::{get, post},
+    Json, Router,
 };
+use moduforge_core::{types::NodePoolFnTrait, ForgeResult};
+use moduforge_model::{id_generator::IdGenerator, node::Node, node_pool::NodePool};
 use moduforge_state::StateConfig;
-use serde::{Deserialize};
+use serde::Deserialize;
 use serde_json::Value;
 
 use crate::{
-    commands::{gcxm::{AddFootNoteCammand, DeleteGcxmCammand, InsertChildCammand}, AddRequest, DeleteNodeRequest}, controller::{get_history, GcxmTreeItem}, error::AppError, initialize::editor::{init_editor, init_options}, nodes::gcxm::{DWGC_STR, DXGC_STR, GCXM_STR}, res, response::Res, ContextHelper, ResponseResult
+    commands::{
+        gcxm::{AddFootNoteCammand, DeleteGcxmCammand, InsertChildCammand},
+        AddRequest, DeleteNodeRequest,
+    },
+    controller::{get_history, GcxmTreeItem},
+    error::AppError,
+    initialize::editor::{init_editor, init_options},
+    nodes::gcxm::{DWGC_STR, DXGC_STR, GCXM_STR},
+    res,
+    response::Res,
+    ContextHelper, ResponseResult,
 };
 
 #[derive(Debug, Deserialize)]
@@ -75,9 +86,7 @@ pub async fn new_project(Json(mut param): Json<GcxmPost>) -> ResponseResult<Gcxm
     }
 }
 ///插入子节点
-pub async fn insert_child(
-    Json(mut param): Json<AddRequest>,
-) -> ResponseResult<GcxmTreeItem> {
+pub async fn insert_child(Json(mut param): Json<AddRequest>) -> ResponseResult<GcxmTreeItem> {
     let editor: Option<
         dashmap::mapref::one::RefMut<'static, String, crate::core::demo_editor::DemoEditor>,
     > = ContextHelper::get_demo_editor(&param.editor_name);
@@ -89,7 +98,13 @@ pub async fn insert_child(
     param.id = Some(IdGenerator::get_id());
     let meta = serde_json::to_value(param.clone())?;
     editor
-        .command_with_meta(Arc::new(InsertChildCammand{data:param.clone()}), "插入 {{other.name}} 子节点".to_string(), meta)
+        .command_with_meta(
+            Arc::new(InsertChildCammand {
+                data: param.clone(),
+            }),
+            "插入 {{other.name}} 子节点".to_string(),
+            meta,
+        )
         .await?;
     let doc = editor.doc();
     let node = doc.get_node(&param.id.clone().unwrap()).unwrap();
@@ -146,7 +161,13 @@ pub async fn delete_gcxm(Json(param): Json<DeleteNodeRequest>) -> ResponseResult
     let node = editor.doc().get_node(&param.id).unwrap();
     let meta = serde_json::to_value(node)?;
     editor
-        .command_with_meta(Arc::new(DeleteGcxmCammand{data:param.clone()}), "删除  {{a.name}}".to_string(), meta)
+        .command_with_meta(
+            Arc::new(DeleteGcxmCammand {
+                data: param.clone(),
+            }),
+            "删除  {{a.name}}".to_string(),
+            meta,
+        )
         .await?;
     res!("删除成功".to_string())
 }
@@ -160,14 +181,14 @@ pub async fn add_footnote(Json(param): Json<AddFootNoteCammand>) -> ResponseResu
     let mut editor = editor.unwrap();
     let meta = serde_json::to_value(param.clone())?;
     editor
-        .command_with_meta(Arc::new(param.clone()), "添加id：{{id}}脚注".to_string(), meta)
+        .command_with_meta(
+            Arc::new(param.clone()),
+            "添加id：{{id}}脚注".to_string(),
+            meta,
+        )
         .await?;
     res!(())
 }
-
-
-
-
 
 pub fn build_app() -> Router {
     Router::new()

@@ -17,19 +17,19 @@ pub mod rcj;
 pub struct AddRequest {
     pub editor_name: String,
     pub parent_id: String,
-    pub id:  Option<NodeId>,
+    pub id: Option<NodeId>,
     pub r#type: String,
-    pub attrs:  HashMap<String, Value>,
+    pub attrs: HashMap<String, Value>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeleteNodeRequest {
     pub editor_name: String,
-    pub id: String
+    pub id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UpdateAttrsRequest {
-    pub editor_name:String,
+    pub editor_name: String,
     pub id: String,
     pub attrs: HashMap<String, Value>,
 }
@@ -51,13 +51,18 @@ pub struct RemoveMarkRequest {
 #[async_trait]
 pub trait ShareCommand: Command {
     /// 添加节点
-    async fn add_node(&self, tr: &mut Transaction, data: &AddRequest) -> TransformResult<()>{
-    
+    async fn add_node(&self, tr: &mut Transaction, data: &AddRequest) -> TransformResult<()> {
         if tr.doc().get_node(&data.parent_id.to_string()).is_none() {
             return Err(anyhow::anyhow!("目标节点不存在".to_string()));
         }
         if let Some(node_type) = tr.schema.nodes.get(&data.r#type) {
-            let nodes = node_type.create_and_fill(data.id.clone(), Some(&data.attrs), vec![], None, &tr.schema);
+            let nodes = node_type.create_and_fill(
+                data.id.clone(),
+                Some(&data.attrs),
+                vec![],
+                None,
+                &tr.schema,
+            );
             tr.add_node(data.parent_id.to_string(), vec![nodes])?;
         } else {
             return Err(anyhow::anyhow!("节点类型不存在".to_string()));
@@ -65,8 +70,12 @@ pub trait ShareCommand: Command {
         Ok(())
     }
     /// 删除节点
-    async fn delete_node(&self, tr: &mut Transaction, data: &DeleteNodeRequest) -> TransformResult<()>{
-       //组装参数 前置必要操作
+    async fn delete_node(
+        &self,
+        tr: &mut Transaction,
+        data: &DeleteNodeRequest,
+    ) -> TransformResult<()> {
+        //组装参数 前置必要操作
         //获取目标节点
         if tr.doc().get_node(&data.id.to_string()).is_none() {
             return Err(anyhow::anyhow!("目标节点不存在".to_string()));
@@ -76,7 +85,11 @@ pub trait ShareCommand: Command {
         Ok(())
     }
     /// 更新节点属性
-    async fn update_attrs(&self, tr: &mut Transaction, data: &UpdateAttrsRequest) -> TransformResult<()>{
+    async fn update_attrs(
+        &self,
+        tr: &mut Transaction,
+        data: &UpdateAttrsRequest,
+    ) -> TransformResult<()> {
         if tr.doc().get_node(&data.id.to_string()).is_none() {
             return Err(anyhow::anyhow!("目标节点不存在".to_string()));
         }
@@ -84,7 +97,7 @@ pub trait ShareCommand: Command {
         Ok(())
     }
     /// 添加标记
-    async fn add_mark(&self, tr: &mut Transaction, data: &AddMarkRequest) -> TransformResult<()>{
+    async fn add_mark(&self, tr: &mut Transaction, data: &AddMarkRequest) -> TransformResult<()> {
         if tr.doc().get_node(&data.id.to_string()).is_none() {
             return Err(anyhow::anyhow!("目标节点不存在".to_string()));
         }
@@ -92,12 +105,15 @@ pub trait ShareCommand: Command {
         Ok(())
     }
     /// 删除标记
-    async fn remove_mark(&self, tr: &mut Transaction, data: &RemoveMarkRequest) -> TransformResult<()>{ 
+    async fn remove_mark(
+        &self,
+        tr: &mut Transaction,
+        data: &RemoveMarkRequest,
+    ) -> TransformResult<()> {
         if tr.doc().get_node(&data.id.to_string()).is_none() {
             return Err(anyhow::anyhow!("目标节点不存在".to_string()));
         }
         tr.remove_mark(data.id.to_string(), data.marks.clone())?;
         Ok(())
     }
-
 }

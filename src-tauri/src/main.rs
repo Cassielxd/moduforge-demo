@@ -15,13 +15,13 @@ fn handle_tauri_error(error: tauri::Error) {
 async fn main() -> anyhow::Result<()> {
     // 初始化日志系统，降低tao警告级别
     init_logging("warn", Some("logs/demo.log")).unwrap();
-    
+
     // 设置tao相关的日志级别为error，减少警告信息
     std::env::set_var("RUST_LOG", "tao=error,tauri=info,app=info");
-    
+
     // 初始化上下文
     init_contex().await;
-    
+
     // 启动API服务器
     tokio::spawn(async move {
         let app: Router = build_app();
@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
             handle_tauri_error(e);
             anyhow::anyhow!("Tauri应用启动失败")
         })?;
-    
+
     Ok(())
 }
 

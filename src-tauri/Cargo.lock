@@ -131,6 +131,7 @@ dependencies = [
  "moduforge-rules-template",
  "moduforge-state",
  "moduforge-transform",
+ "rand 0.9.1",
  "serde",
  "serde_json",
  "state",

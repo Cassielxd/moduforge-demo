@@ -41,11 +41,9 @@ fn get_attr_name(name: &str) -> HashMap<String, AttributeSpec> {
         AttributeSpec {
             default: Some(name.into()),
         },
-    ); 
+    );
     att
 }
-
-
 
 fn get_attr_spec() -> HashMap<String, AttributeSpec> {
     let mut att = HashMap::new();

@@ -4,7 +4,7 @@ use moduforge_core::types::{Content, EditorOptionsBuilder, Extensions, NodePoolF
 
 use crate::{
     core::demo_editor::{DemoEditor, DemoEditorOptions},
-    marks,
+    marks, middleware,
     nodes::{
         fbfx_csxm::{init_fbfx_csxm_fields, CSXM_STR, DE_STR, FBFX_STR},
         gcxm::{init_project_structure, DWGC_STR},
@@ -20,7 +20,12 @@ pub async fn init_options(create_callback: Arc<dyn NodePoolFnTrait>) -> DemoEdit
     let mut builder = EditorOptionsBuilder::new();
     builder = builder
         .content(Content::NodePoolFn(create_callback))
-        .extensions(init_extension());
+        // 设置历史记录限制
+        .history_limit(20)
+        // 添加扩展
+        .extensions(init_extension())
+        // 添加中间件
+        .add_middleware(middleware::collect_fbfx_csxm::CollectFbfxCsxmMiddleware);
     let options = builder.build();
     DemoEditorOptions {
         editor_options: options,

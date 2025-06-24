@@ -25,6 +25,7 @@ pub mod response;
 
 pub mod commands;
 
+pub mod middleware;
 pub mod router;
 
 pub mod error;

@@ -30,6 +30,7 @@ state= {version = "0.6.0", features = ["tls"] } # 状态管理
 async-trait="0.1.88"     
 dashmap = "6.1.0"   #
 im = "15.1.0"
+rand = "0.9.1"
 # lazy_static 线程安全全局变量
 lazy_static = "1.4"
 anyhow="1"

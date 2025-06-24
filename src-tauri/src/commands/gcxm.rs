@@ -6,25 +6,26 @@ use moduforge_state::{transaction::Command, Transaction};
 use moduforge_transform::TransformResult;
 use serde::{Deserialize, Serialize};
 
-use crate::{commands::{AddMarkRequest, DeleteNodeRequest, ShareCommand, AddRequest}, marks::FOOTNOTE_STR};
+use crate::{
+    commands::{AddMarkRequest, AddRequest, DeleteNodeRequest, ShareCommand},
+    marks::FOOTNOTE_STR,
+};
 #[derive(Debug, Clone)]
 pub struct InsertChildCammand {
-    pub data:AddRequest
+    pub data: AddRequest,
 }
 
 #[async_trait]
 impl Command for InsertChildCammand {
     async fn execute(&self, tr: &mut Transaction) -> TransformResult<()> {
-       self.add_node(tr, &self.data).await
+        self.add_node(tr, &self.data).await
     }
     fn name(&self) -> String {
         "insert_gcxm_child".to_string()
     }
 }
 #[async_trait]
-impl ShareCommand for InsertChildCammand {
-    
-}
+impl ShareCommand for InsertChildCammand {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AddFootNoteCammand {
@@ -45,25 +46,26 @@ impl Command for AddFootNoteCammand {
                 "value".to_string(),
                 self.footnote.clone().into(),
             )])));
-            self.add_mark(tr, &AddMarkRequest{
+        self.add_mark(
+            tr,
+            &AddMarkRequest {
                 editor_name: self.editor_name.clone(),
                 id: self.id.to_string(),
                 marks: vec![mark],
-            }).await
+            },
+        )
+        .await
     }
     fn name(&self) -> String {
         "add_gcxm_footnote".to_string()
     }
 }
 #[async_trait]
-impl ShareCommand for AddFootNoteCammand {
-    
-}
-
+impl ShareCommand for AddFootNoteCammand {}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeleteGcxmCammand {
-    pub data:DeleteNodeRequest
+    pub data: DeleteNodeRequest,
 }
 
 #[async_trait]
@@ -77,6 +79,4 @@ impl Command for DeleteGcxmCammand {
 }
 
 #[async_trait]
-impl ShareCommand for DeleteGcxmCammand {
-    
-}
+impl ShareCommand for DeleteGcxmCammand {}

@@ -1,56 +1,64 @@
 use std::sync::Arc;
 
 use axum::Json;
+use chrono::{DateTime, Local};
 use moduforge_core::types::HistoryEntryWithMeta;
 use moduforge_model::{attrs::Attrs, mark::Mark, node::Node, types::NodeId};
 use moduforge_rules_template::render;
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Local};
 
-use crate::{error::AppError, res,response::Res, ContextHelper, ResponseResult};
+use crate::{error::AppError, res, response::Res, ContextHelper, ResponseResult};
 
 pub mod djgc;
 pub mod fbfx_csxm;
 pub mod gcxm;
 pub mod rcj;
 
-
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetHistoryVersionCammand {
-    pub editor_name: String
+    pub editor_name: String,
 }
 
 /// 获取历史记录
-pub async fn get_history(Json(param): Json<GetHistoryVersionCammand>) -> ResponseResult<Vec<HistoryEntry>> {
+pub async fn get_history(
+    Json(param): Json<GetHistoryVersionCammand>,
+) -> ResponseResult<Vec<HistoryEntry>> {
     let editor = ContextHelper::get_demo_editor(&param.editor_name);
     if editor.is_none() {
         return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
     }
-    let  editor = editor.unwrap();
+    let editor = editor.unwrap();
     let history_manager = editor.get_history_manager();
     let history_version = history_manager.get_history();
     let history = history_version;
-    let mut history_result = history.past.iter().map(render_history_entry).collect::<Vec<HistoryEntry>>();
+    let mut history_result = history
+        .past
+        .iter()
+        .map(render_history_entry)
+        .collect::<Vec<HistoryEntry>>();
     history_result.push(render_history_entry(&history.present));
-    let  history_future = history.future.iter().map(render_history_entry).collect::<Vec<HistoryEntry>>();
+    let history_future = history
+        .future
+        .iter()
+        .map(render_history_entry)
+        .collect::<Vec<HistoryEntry>>();
     history_result.extend(history_future);
     res!(history_result)
 }
 
 /// 渲染历史记录描述
 fn render_history_entry(item: &HistoryEntryWithMeta) -> HistoryEntry {
-    let description = render(&item.description,item.meta.clone().into()).unwrap();
-       // 日期格式化成yyyy-MM-dd HH:mm:ss
-       let timestamp = DateTime::<Local>::from(item.timestamp)
-           .format("%Y-%m-%d %H:%M:%S")
-           .to_string();
-        return HistoryEntry {
-            current: false,
-            state_version: item.state.version,
-            description: description.to_string(),
-            timestamp: timestamp,
-        };
+    let description = render(&item.description, item.meta.clone().into()).unwrap();
+    // 日期格式化成yyyy-MM-dd HH:mm:ss
+    let timestamp = DateTime::<Local>::from(item.timestamp)
+        .format("%Y-%m-%d %H:%M:%S")
+        .to_string();
+    return HistoryEntry {
+        current: false,
+        state_version: item.state.version,
+        description: description.to_string(),
+        timestamp: timestamp,
+    };
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,9 +73,6 @@ pub struct HistoryEntry {
     pub timestamp: String,
     pub current: bool,
 }
-
-
-
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GcxmTreeItem {
