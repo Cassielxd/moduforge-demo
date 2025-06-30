@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 use moduforge_state::{plugin::PluginTrait, State, Transaction};
 
-
-/* 
+/*
 人材机 插件
 分部分项 数据插入后需要 触发人材机的计算
 在此方法里 拿到 分部分项 的 meta 数据 找到对应的 定额节点  新增对应的人材机节点

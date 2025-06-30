@@ -19,7 +19,7 @@ pub struct AddRequest {
     pub parent_id: String,
     pub id: Option<NodeId>,
     pub r#type: String,
-    pub attrs: HashMap<String, Value>,
+    pub attrs: Option<HashMap<String, Value>>,
 }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeleteNodeRequest {
@@ -58,7 +58,7 @@ pub trait ShareCommand: Command {
         if let Some(node_type) = tr.schema.nodes.get(&data.r#type) {
             let nodes = node_type.create_and_fill(
                 data.id.clone(),
-                Some(&data.attrs),
+                Some(&data.attrs.clone().unwrap_or_default()),
                 vec![],
                 None,
                 &tr.schema,

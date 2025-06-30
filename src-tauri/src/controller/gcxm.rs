@@ -17,7 +17,7 @@ use crate::{
         gcxm::{AddFootNoteCammand, DeleteGcxmCammand, InsertChildCammand},
         AddRequest, DeleteNodeRequest,
     },
-    controller::{get_history, GcxmTreeItem},
+    controller::{get_data_tree, get_history, get_inc_data, GcxmTreeItem},
     error::AppError,
     initialize::editor::{init_editor, init_options},
     nodes::gcxm::{DWGC_STR, DXGC_STR, GCXM_STR},
@@ -86,7 +86,7 @@ pub async fn new_project(Json(mut param): Json<GcxmPost>) -> ResponseResult<Gcxm
     }
 }
 ///插入子节点
-pub async fn insert_child(Json(mut param): Json<AddRequest>) -> ResponseResult<GcxmTreeItem> {
+pub async fn insert_child(Json(mut param): Json<AddRequest>) -> ResponseResult<()> {
     let editor: Option<
         dashmap::mapref::one::RefMut<'static, String, crate::core::demo_editor::DemoEditor>,
     > = ContextHelper::get_demo_editor(&param.editor_name);
@@ -106,25 +106,7 @@ pub async fn insert_child(Json(mut param): Json<AddRequest>) -> ResponseResult<G
             meta,
         )
         .await?;
-    let doc = editor.doc();
-    let node = doc.get_node(&param.id.clone().unwrap()).unwrap();
-    let mut nodes: Vec<Arc<Node>> = doc
-        .descendants(&param.id.clone().unwrap())
-        .iter()
-        .filter(|n| n.r#type == DWGC_STR || n.r#type == DXGC_STR)
-        .cloned()
-        .collect();
-    nodes.push(node);
-    let parent_map = &doc.get_inner().parent_map;
-    if let Some(root_item) = GcxmTreeItem::from_nodes(param.id.clone().unwrap(), nodes, parent_map)
-    {
-        res!(root_item)
-    } else {
-        Err(AppError(anyhow::anyhow!(
-            "无法构建工程树,未找到根节点,{}",
-            param.id.unwrap()
-        )))
-    }
+    res!(())
 }
 
 ///获取工程项目树节点
@@ -204,4 +186,8 @@ pub fn build_app() -> Router {
         .route("/delete_gcxm", post(delete_gcxm))
         // 历史记录
         .route("/get_history", post(get_history))
+        //获取数据树
+        .route("/get_data_tree", post(get_data_tree))
+        //获取增量数据
+        .route("/get_inc_data/{editor_name}", get(get_inc_data))
 }

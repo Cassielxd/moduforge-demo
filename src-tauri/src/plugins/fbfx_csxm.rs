@@ -7,7 +7,7 @@ use rand::Rng;
 
 use crate::commands::AddRequest;
 
-/* 
+/*
 分部分项 措施项目 插件
  */
 #[derive(Debug)]

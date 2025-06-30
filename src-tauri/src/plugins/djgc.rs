@@ -1,9 +1,7 @@
 use async_trait::async_trait;
 use moduforge_state::{plugin::PluginTrait, State, Transaction};
 
-
-
-/* 
+/*
 单价构成 插件
 人材机 数据插入后需要 触发单价构成的计算
 在此方法里 拿到 人材机 的 meta 数据 找到对应的 分部分项节点  新增对应的人材机节点

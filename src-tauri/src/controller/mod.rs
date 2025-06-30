@@ -1,18 +1,67 @@
 use std::sync::Arc;
 
-use axum::Json;
+use axum::{extract::Path, Json};
 use chrono::{DateTime, Local};
 use moduforge_core::types::HistoryEntryWithMeta;
 use moduforge_model::{attrs::Attrs, mark::Mark, node::Node, types::NodeId};
 use moduforge_rules_template::render;
 use serde::{Deserialize, Serialize};
 
-use crate::{error::AppError, res, response::Res, ContextHelper, ResponseResult};
+use crate::{
+    error::AppError,
+    plugins::inc::{Operation, Operations},
+    res,
+    response::Res,
+    ContextHelper, ResponseResult,
+};
 
 pub mod djgc;
 pub mod fbfx_csxm;
 pub mod gcxm;
 pub mod rcj;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetDataTreeRequest {
+    pub editor_name: String,
+    pub id: String,
+}
+
+pub async fn get_inc_data(
+    Path(editor_name): Path<String>,
+) -> ResponseResult<Option<Arc<Operations>>> {
+    let editor = ContextHelper::get_demo_editor(&editor_name);
+    if editor.is_none() {
+        return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
+    }
+    let editor = editor.unwrap();
+    let manager = editor.get_state().resource_manager();
+    let operations = manager
+        .resource_table
+        .take::<Operations>("inc_data".to_string());
+    res!(operations)
+}
+
+/// 获取数据树
+pub async fn get_data_tree(Json(param): Json<GetDataTreeRequest>) -> ResponseResult<GcxmTreeItem> {
+    let editor = ContextHelper::get_demo_editor(&param.editor_name);
+    if editor.is_none() {
+        return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
+    }
+    let editor = editor.unwrap();
+    let doc = editor.doc();
+    let node = doc.get_node(&param.id);
+    if node.is_none() {
+        return Err(AppError(anyhow::anyhow!("节点不存在".to_string())));
+    }
+    let node = node.unwrap();
+    let mut nodes: Vec<Arc<Node>> = doc.descendants(&param.id);
+    nodes.push(node);
+    let parent_map = &doc.get_inner().parent_map;
+    if let Some(root_item) = GcxmTreeItem::from_nodes(param.id.clone(), nodes, parent_map) {
+        res!(root_item)
+    } else {
+        Err(AppError(anyhow::anyhow!("无法构建工程树,未找到根节点")))
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetHistoryVersionCammand {
