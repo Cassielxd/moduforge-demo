@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
-import { House, Document, View, Minus, FullScreen, Close, Setting, Clock } from "@element-plus/icons-vue";
+import { House, Document, View, Minus, FullScreen, Close, Setting, Clock, User, SwitchButton, ArrowDown, Moon, Sunny } from "@element-plus/icons-vue";
 import { Window } from '@tauri-apps/api/window';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { invoke } from '@tauri-apps/api/core';
 // @ts-ignore
 import SettingsDialog from './SettingsDialog.vue';
 import { useHistoryStore } from '@/stores/history';
 import { useRootStore } from '@/stores/root';
+import { useUserStore } from '@/stores/user';
 
 const appWindow = new Window('main');
 const router = useRouter();
@@ -17,6 +20,59 @@ const showSettings = ref(false);
 
 const historyStore = useHistoryStore();
 const rootStore = useRootStore();
+const userStore = useUserStore();
+
+// 主题管理
+const theme = ref<'light' | 'dark' | 'system'>('system');
+
+// 应用主题
+const applyTheme = (newTheme: 'light' | 'dark' | 'system') => {
+  theme.value = newTheme;
+
+  if (newTheme === 'system') {
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem('theme');
+  } else {
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+  }
+};
+
+// 切换主题
+const toggleTheme = () => {
+  const themes: ('light' | 'dark' | 'system')[] = ['system', 'light', 'dark'];
+  const currentIndex = themes.indexOf(theme.value);
+  const nextTheme = themes[(currentIndex + 1) % themes.length];
+  applyTheme(nextTheme);
+};
+
+// 获取主题显示文本
+const getThemeText = () => {
+  switch (theme.value) {
+    case 'light': return '浅色主题';
+    case 'dark': return '深色主题';
+    case 'system': return '跟随系统';
+    default: return '跟随系统';
+  }
+};
+
+// 获取主题图标
+const getThemeIcon = () => {
+  switch (theme.value) {
+    case 'light': return Sunny;
+    case 'dark': return Moon;
+    case 'system': return Setting;
+    default: return Setting;
+  }
+};
+
+onMounted(() => {
+  // 读取保存的主题设置
+  const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+  if (savedTheme) {
+    applyTheme(savedTheme);
+  }
+});
 
 watch(() => historyStore.historyList, (newVal) => {
   menuItems.value[1].children = newVal;
@@ -26,7 +82,7 @@ const menuItems = ref([
     name: "home",
     label: "首页",
     icon: House,
-    path: "/"
+    path: "/home/dashboard"
   },
   {
     name: "history",
@@ -50,6 +106,32 @@ const closeWindow = () => appWindow.close();
 
 const clearHistory = () => {
   //historyStore.clearHistory();
+};
+
+// 退出登录
+const handleLogout = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要退出登录吗？',
+      '确认退出',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+
+    // 清除用户状态
+    userStore.logout();
+    
+    // 显示退出成功消息
+    ElMessage.success('已退出登录');
+    
+    // 不需要路由跳转，登录弹窗会自动显示
+  } catch (error) {
+    // 用户取消退出，什么都不做
+    console.log('用户取消退出登录');
+  }
 };
 </script>
 
@@ -104,12 +186,48 @@ const clearHistory = () => {
           </template>
         </el-menu>
       </div>
+      <!-- 用户信息区域 -->
+      <div class="user-section">
+        <el-dropdown trigger="click" placement="bottom-end">
+          <div class="user-info">
+            <el-avatar :size="32" :icon="User" />
+            <span class="user-name">{{ userStore.userName }}</span>
+            <el-icon class="dropdown-icon">
+              <ArrowDown />
+            </el-icon>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item>
+                <el-icon>
+                  <User />
+                </el-icon>
+                个人信息
+              </el-dropdown-item>
+              <el-dropdown-item @click="toggleTheme">
+                <el-icon>
+                  <component :is="getThemeIcon()" />
+                </el-icon>
+                {{ getThemeText() }}
+              </el-dropdown-item>
+              <el-dropdown-item @click="showSettings = true">
+                <el-icon>
+                  <Setting />
+                </el-icon>
+                系统设置
+              </el-dropdown-item>
+              <el-dropdown-item divided @click="handleLogout">
+                <el-icon>
+                  <SwitchButton />
+                </el-icon>
+                退出登录
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+      </div>
+
       <div class="window-controls">
-        <button class="window-control-button" @click="showSettings = true">
-          <el-icon>
-            <Setting />
-          </el-icon>
-        </button>
         <button class="window-control-button" @click="minimizeWindow">
           <el-icon>
             <Minus />
@@ -139,9 +257,25 @@ const clearHistory = () => {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  border: 1px solid #e4e7ed;
-  border-radius: 4px;
+  width: 100vw;
+  background: var(--el-bg-color);
+  position: relative;
   overflow: hidden;
+}
+
+.main-layout::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.2) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 .main-header {
@@ -149,10 +283,13 @@ const clearHistory = () => {
   display: flex;
   align-items: center;
   padding: 0 20px;
-  border-bottom: 1px solid #e4e7ed;
+  border-bottom: 1px solid var(--el-border-color);
   flex-shrink: 0;
-  background-color: #ffffff;
+  background: var(--el-bg-color);
   gap: 40px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 1px 4px var(--el-box-shadow-light);
 }
 
 .header-left {
@@ -163,8 +300,9 @@ const clearHistory = () => {
 
 .app-title {
   font-size: 20px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   margin: 0;
+  font-weight: 600;
 }
 
 .project-id {
@@ -174,12 +312,12 @@ const clearHistory = () => {
 
 .header-menu {
   display: flex;
-  ;
 }
 
 .header-nav-menu {
   border-bottom: none !important;
   min-width: auto !important;
+  background: transparent !important;
 }
 
 .header-nav-menu .el-menu-item {
@@ -187,18 +325,71 @@ const clearHistory = () => {
   white-space: nowrap;
   overflow: visible;
   text-overflow: unset;
+  color: var(--el-text-color-primary) !important;
+  background: transparent !important;
+}
+
+.header-nav-menu .el-menu-item:hover {
+  background: var(--el-fill-color-light) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+.header-nav-menu .el-menu-item.is-active {
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
+  border-bottom: 2px solid var(--el-color-primary) !important;
 }
 
 .main-content {
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
+  margin: 8px;
+  border-radius: 8px;
+  background: var(--el-bg-color-page);
+  box-shadow: var(--el-box-shadow);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.user-section {
+  margin-left: auto;
+  margin-right: 16px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  background: transparent;
+  border: 1px solid var(--el-border-color-light);
+}
+
+.user-info:hover {
+  background: var(--el-fill-color-light);
+}
+
+.user-name {
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dropdown-icon {
+  font-size: 12px;
+  color: var(--el-text-color-regular);
+  transition: transform 0.2s;
 }
 
 .window-controls {
   display: flex;
   gap: 8px;
-  margin-left: auto;
 }
 
 .window-control-button {
@@ -206,25 +397,59 @@ const clearHistory = () => {
   height: 30px;
   border: none;
   background: transparent;
-  color: #666;
+  color: var(--el-text-color-regular);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
+  transition: all 0.2s;
+  border: 1px solid var(--el-border-color-light);
 }
 
 .window-control-button:hover {
-  background-color: #f5f5f5;
+  background: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
 }
 
 .window-control-button.close:hover {
-  background-color: #ff4d4f;
-  color: white;
+  background: var(--el-color-danger);
+  color: #ffffff;
 }
 
-.window-control-button .el-icon {
-  font-size: 16px;
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .main-layout {
+    background: #1a1a1a;
+  }
+
+  .main-header {
+    background: #1a1a1a;
+    border-bottom: 1px solid #2d2d2d;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .main-content {
+    background: #212121;
+    border: 1px solid #2d2d2d;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .user-info {
+    border: 1px solid #2d2d2d;
+  }
+
+  .user-info:hover {
+    background: #2d2d2d;
+  }
+
+  .window-control-button {
+    border: 1px solid #2d2d2d;
+  }
+
+  .window-control-button:hover {
+    background: #2d2d2d;
+  }
 }
 
 /* 历史记录子菜单样式 */

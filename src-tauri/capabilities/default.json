@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "core:window:default",
+    "core:window:allow-create",
     "core:window:allow-start-dragging",
     "core:window:allow-close",
     "core:window:allow-minimize",
@@ -21,6 +22,14 @@
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-unregister-all",
-    "global-shortcut:allow-is-registered"
+    "global-shortcut:allow-is-registered",
+    "core:tray:allow-get-by-id",
+    "core:tray:allow-new",
+    "core:tray:allow-set-menu",
+    "core:tray:allow-set-icon",
+    "core:tray:allow-set-tooltip",
+    "core:tray:allow-set-title",
+    "core:tray:allow-set-temp-dir-path"
+    
   ]
 }

@@ -106,6 +106,7 @@ const getCurrentTime = () => {
   padding: 0;
   display: flex;
   flex-direction: column;
+  background: var(--el-bg-color-page);
 }
 
 .home-content {
@@ -113,37 +114,52 @@ const getCurrentTime = () => {
   display: flex;
   overflow: hidden;
   min-height: 0;
+  gap: 8px;
+  padding: 8px;
 }
 
 .left-panel {
   width: 25%;
-  border-right: 1px solid #e4e7ed;
-  background-color: #ffffff;
+  background: var(--el-bg-color);
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color-light);
+  box-shadow: var(--el-box-shadow-light);
 }
 
 .resizer {
   width: 5px;
   cursor: col-resize;
-  background-color: #f5f7fa;
-  border-left: 1px solid #e4e7ed;
-  border-right: 1px solid #e4e7ed;
+  background: var(--el-fill-color-light);
+  border-radius: 2px;
+  margin: 0 2px;
+  transition: background 0.2s;
+}
+
+.resizer:hover {
+  background: var(--el-fill-color);
 }
 
 .right-panel {
   width: 70%;
-  background-color: #ffffff;
-  border-left: 1px solid #e4e7ed;
+  background: var(--el-bg-color);
+  border-radius: 6px;
+  border: 1px solid var(--el-border-color-light);
+  box-shadow: var(--el-box-shadow-light);
 }
 
 /* 底部统计信息 */
 .footer-stats {
   height: 32px;
   flex-shrink: 0;
-  background: #f5f7fa;
-  border-top: 1px solid #e4e7ed;
+  background: var(--el-bg-color);
+  border-top: 1px solid var(--el-border-color-light);
+  border-radius: 0 0 6px 6px;
   display: flex;
   align-items: center;
   padding: 0 16px;
+  margin: 8px;
+  margin-top: 0;
+  box-shadow: var(--el-box-shadow-lighter);
 }
 
 .stats-container {
@@ -162,24 +178,51 @@ const getCurrentTime = () => {
 
 .stat-label {
   font-size: 12px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   font-weight: 500;
 }
 
 .stat-value {
   font-size: 12px;
-  color: #303133;
+  color: var(--el-text-color-primary);
   font-weight: 600;
 }
 
 .stat-value.highlight {
-  color: #409eff;
+  color: var(--el-color-primary);
   font-weight: 700;
 }
 
 .stat-separator {
-  color: #dcdfe6;
+  color: var(--el-text-color-disabled);
   font-size: 12px;
   margin: 0 4px;
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .home-layout {
+    background: #212121;
+  }
+
+  .left-panel,
+  .right-panel {
+    background: #1a1a1a;
+    border: 1px solid #2d2d2d;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+
+  .footer-stats {
+    background: #1a1a1a;
+    border-top: 1px solid #2d2d2d;
+  }
+
+  .resizer {
+    background: #2d2d2d;
+  }
+
+  .resizer:hover {
+    background: #3d3d3d;
+  }
 }
 </style>

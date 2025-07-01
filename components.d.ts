@@ -9,15 +9,18 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AddChildDialog: typeof import('./src/components/AddChildDialog.vue')['default']
+    ElAvatar: typeof import('element-plus/es')['ElAvatar']
     ElBadge: typeof import('element-plus/es')['ElBadge']
     ElButton: typeof import('element-plus/es')['ElButton']
     ElCard: typeof import('element-plus/es')['ElCard']
+    ElCheckbox: typeof import('element-plus/es')['ElCheckbox']
     ElCol: typeof import('element-plus/es')['ElCol']
     ElColorPicker: typeof import('element-plus/es')['ElColorPicker']
     ElDatePicker: typeof import('element-plus/es')['ElDatePicker']
     ElDescriptions: typeof import('element-plus/es')['ElDescriptions']
     ElDescriptionsItem: typeof import('element-plus/es')['ElDescriptionsItem']
     ElDialog: typeof import('element-plus/es')['ElDialog']
+    ElDivider: typeof import('element-plus/es')['ElDivider']
     ElDropdown: typeof import('element-plus/es')['ElDropdown']
     ElDropdownItem: typeof import('element-plus/es')['ElDropdownItem']
     ElDropdownMenu: typeof import('element-plus/es')['ElDropdownMenu']
@@ -25,6 +28,7 @@ declare module 'vue' {
     ElFormItem: typeof import('element-plus/es')['ElFormItem']
     ElIcon: typeof import('element-plus/es')['ElIcon']
     ElInput: typeof import('element-plus/es')['ElInput']
+    ElLink: typeof import('element-plus/es')['ElLink']
     ElMenu: typeof import('element-plus/es')['ElMenu']
     ElMenuItem: typeof import('element-plus/es')['ElMenuItem']
     ElRow: typeof import('element-plus/es')['ElRow']
@@ -42,6 +46,8 @@ declare module 'vue' {
     ElTree: typeof import('element-plus/es')['ElTree']
     HistoryDialog: typeof import('./src/components/HistoryDialog.vue')['default']
     LeftTreePanel: typeof import('./src/components/LeftTreePanel.vue')['default']
+    LoginDialog: typeof import('./src/components/LoginDialog.vue')['default']
+    LoginLayout: typeof import('./src/components/LoginLayout.vue')['default']
     MainLayout: typeof import('./src/components/MainLayout.vue')['default']
     MainTableWithAddChild: typeof import('./src/components/MainTableWithAddChild.vue')['default']
     MultiTabView: typeof import('./src/components/MultiTabView.vue')['default']
@@ -49,6 +55,7 @@ declare module 'vue' {
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     SettingsDialog: typeof import('./src/components/SettingsDialog.vue')['default']
+    TrayMenuLayout: typeof import('./src/components/TrayMenuLayout.vue')['default']
     TreeTableLayout: typeof import('./src/components/TreeTableLayout.vue')['default']
   }
   export interface GlobalDirectives {
