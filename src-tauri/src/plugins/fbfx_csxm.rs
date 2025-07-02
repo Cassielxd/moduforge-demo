@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 
-use moduforge_state::{plugin::PluginTrait, State, Transaction};
+use mf_state::{plugin::PluginTrait, State, Transaction};
 use rand::Rng;
 
 use crate::commands::AddRequest;

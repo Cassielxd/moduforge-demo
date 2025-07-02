@@ -1,5 +1,5 @@
-use moduforge_core::node::Node;
-use moduforge_macros::node;
+use mf_core::node::Node;
+use mf_macro::node;
 lazy_static! {
     pub static ref DJGC: Node = node!("djgc", "单价构成","","value"=>"".into());
     pub static ref DJGC_NODE: Node = node!("djgcRowNode", "单价构成行节点","","qfCode"=>"".into(),"type"=>"".into(),"code"=>"".into(),"caculateBase"=>"".into(),"desc"=>"".into(),"rate"=>"".into(),"price"=>0.into());

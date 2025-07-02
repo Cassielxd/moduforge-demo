@@ -3,8 +3,8 @@ use std::{
     sync::Arc,
 };
 
-use moduforge_core::{async_runtime::ForgeAsyncRuntime, types::RuntimeOptions, ForgeResult};
-use moduforge_state::{resource::Resource, resource_table::ResourceId};
+use mf_core::{async_runtime::ForgeAsyncRuntime, types::RuntimeOptions, ForgeResult};
+use mf_state::{resource::Resource, resource_table::ResourceId};
 
 pub struct DemoEditorOptions {
     pub editor_options: RuntimeOptions,

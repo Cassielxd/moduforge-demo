@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use axum::{extract::Path, Json};
 use chrono::{DateTime, Local};
-use moduforge_core::types::HistoryEntryWithMeta;
-use moduforge_model::{attrs::Attrs, mark::Mark, node::Node, types::NodeId};
-use moduforge_rules_template::render;
+use mf_core::types::HistoryEntryWithMeta;
+use mf_model::{attrs::Attrs, mark::Mark, node::Node, types::NodeId};
+use mf_template::render;
 use serde::{Deserialize, Serialize};
 
 use crate::{

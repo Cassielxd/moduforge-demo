@@ -40,17 +40,17 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 # 核心模块
-moduforge-model = {path = "../../moduforge-rs/crates/model"} 
-moduforge-state = {path = "../../moduforge-rs/crates/state"} 
-moduforge-transform = {path = "../../moduforge-rs/crates/transform"} 
-moduforge-core = {path = "../../moduforge-rs/crates/core"} 
-moduforge-macros = {path = "../../moduforge-rs/crates/macro"} 
-moduforge-macros-derive = {path = "../../moduforge-rs/crates/derive"} 
+moduforge-model = "0.4.6"
+moduforge-state = "0.4.6"
+moduforge-transform = "0.4.6"
+moduforge-core = "0.4.6"
+moduforge-macros = "0.4.6"
+moduforge-macros-derive = "0.4.6"
 
 # 规则引擎
-moduforge-rules-engine = {path = "../../moduforge-rs/crates/engine"} 
-moduforge-rules-expression = {path = "../../moduforge-rs/crates/expression"} 
-moduforge-rules-template = {path = "../../moduforge-rs/crates/template"} 
+moduforge-rules-engine = "0.4.6"
+moduforge-rules-expression = "0.4.6"
+moduforge-rules-template = "0.4.6"
 chrono = "0.4.41"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

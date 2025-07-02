@@ -3,7 +3,7 @@
 
 use app_lib::{initialize::init_contex, router::build_app, serve::AppBuilder};
 use axum::{http::StatusCode, response::IntoResponse, Router};
-use moduforge_state::init_logging;
+use mf_state::init_logging;
 use tauri::{Listener, Manager, AppHandle, tray::TrayIconBuilder, tray::TrayIconEvent};
 
 // 自定义事件处理函数
@@ -115,7 +115,7 @@ async fn hide_tray_menu(app: AppHandle) -> Result<(), String> {
 
 // 处理登录成功的命令
 #[tauri::command]
-fn handle_login_success(window: tauri::Window) -> Result<(), String> {
+fn handle_login_success(_window: tauri::Window) -> Result<(), String> {
     println!("用户登录成功，准备显示主界面");
     
     // 无需窗口切换，登录成功后由前端路由处理
@@ -124,7 +124,7 @@ fn handle_login_success(window: tauri::Window) -> Result<(), String> {
 
 // 处理退出登录的命令
 #[tauri::command]
-fn handle_logout(window: tauri::Window) -> Result<(), String> {
+fn handle_logout(_window: tauri::Window) -> Result<(), String> {
     println!("用户退出登录，准备返回登录界面");
     
     // 无需窗口切换，退出登录后由前端路由处理

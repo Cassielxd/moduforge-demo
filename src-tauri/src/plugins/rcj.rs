@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use moduforge_state::{plugin::PluginTrait, State, Transaction};
+use mf_state::{plugin::PluginTrait, State, Transaction};
 
 /*
 人材机 插件

@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use moduforge_core::{
+use mf_core::{
     extension::Extension,
     types::{Content, EditorOptionsBuilder, Extensions, NodePoolFnTrait},
 };
-use moduforge_state::plugin::{Plugin, PluginSpec};
+use mf_state::plugin::{Plugin, PluginSpec};
 
 use crate::{
     core::demo_editor::{DemoEditor, DemoEditorOptions},

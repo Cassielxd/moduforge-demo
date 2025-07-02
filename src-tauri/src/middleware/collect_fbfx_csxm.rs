@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use moduforge_core::{middleware::Middleware, ForgeResult};
-use moduforge_state::{State, Transaction};
+use mf_core::{middleware::Middleware, ForgeResult};
+use mf_state::{State, Transaction};
 
 /// 收集 分部分项 措施项目 汇总 中间件
 /// 当 编辑区 分部分项 措施项目节点 更新后需要 收集 分部分项 措施项目 汇总

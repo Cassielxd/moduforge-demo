@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use moduforge_core::node::Node;
-use moduforge_macros::node;
-use moduforge_model::schema::AttributeSpec;
+use mf_core::node::Node;
+use mf_macro::node;
+use mf_model::schema::AttributeSpec;
 
 pub const FB_STR: &str = "fb";
 pub const QD_STR: &str = "qd";

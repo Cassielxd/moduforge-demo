@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use moduforge_model::{id_generator::IdGenerator, node::Node};
+use mf_model::{id_generator::IdGenerator, node::Node};
 
 use crate::{
     commands::{

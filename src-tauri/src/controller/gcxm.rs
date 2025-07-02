@@ -6,9 +6,9 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use moduforge_core::{types::NodePoolFnTrait, ForgeResult};
-use moduforge_model::{id_generator::IdGenerator, node::Node, node_pool::NodePool};
-use moduforge_state::StateConfig;
+use mf_core::{types::NodePoolFnTrait, ForgeResult};
+use mf_model::{id_generator::IdGenerator, node::Node, node_pool::NodePool};
+use mf_state::StateConfig;
 use serde::Deserialize;
 use serde_json::Value;
 
