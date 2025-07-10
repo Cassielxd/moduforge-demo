@@ -2618,9 +2618,9 @@ dependencies = [
 
 [[package]]
 name = "moduforge-collaboration-client"
-version = "0.4.10"
+version = "0.4.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "149f94dd766a231f795215b0dfd355ccacb8a51db4d904c571b1fddfcea52591"
+checksum = "e9bbcc2edcabd9768887b3987798d6017f76c3fd7cc955ee4035d696735caeea"
 dependencies = [
  "anyhow",
  "chrono",

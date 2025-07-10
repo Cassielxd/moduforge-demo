@@ -46,7 +46,7 @@ moduforge-transform = "0.4.9"
 moduforge-core = "0.4.9"
 moduforge-macros = "0.4.9"
 moduforge-macros-derive = "0.4.9"
-moduforge-collaboration-client = "0.4.10"
+moduforge-collaboration-client = "0.4.11"
 
 # 规则引擎
 moduforge-rules-engine = "0.4.9"

@@ -5,8 +5,7 @@ use std::{
 };
 
 use mf_collab_client::{
-    mapping::Mapper, provider::WebsocketProvider, sync::Awareness, types::SyncEvent, utils::Utils,
-    AwarenessRef, Doc,
+    mapping::Mapper, provider::WebsocketProvider, types::SyncEvent, utils::Utils, yrs::{self, sync::Awareness, DeepObservable, Doc}, AwarenessRef
 };
 use mf_core::{
     async_runtime::ForgeAsyncRuntime,
@@ -51,7 +50,7 @@ impl CollabEditor {
     pub async fn create(options: CollabEditorOptions) -> ForgeResult<Self> {
         let mut sync_manager = CollabSyncManager::new(&options).await?;
         let mut event_rx = sync_manager.provider.subscribe_sync_events().unwrap();
-        sync_manager.provider.connect().await;
+        sync_manager.start().await;
         // 设置超时 10 秒
         let timeout = tokio::time::timeout(Duration::from_secs(10), async {
             while let Ok(event) = event_rx.recv().await {
@@ -138,10 +137,16 @@ impl DerefMut for CollabEditor {
 pub struct CollabSyncManager {
     provider: WebsocketProvider,
     awareness: AwarenessRef,
-    // ... 其他同步相关字段
 }
 
 impl CollabSyncManager {
+    /// 创建协作同步管理器
+    /// 
+    /// 初始化协作同步管理器，包括创建文档和意识
+    /// 
+    /// # 参数
+    /// 
+    /// * `options` - 协作编辑器选项
     pub async fn new(options: &CollabEditorOptions) -> ForgeResult<Self> {
         let doc = Doc::new();
         let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
@@ -155,10 +160,35 @@ impl CollabSyncManager {
             awareness,
         })
     }
+    /// 同步数据到远程
+    /// 
+    /// 将编辑器中的数据同步到远程服务器
+    /// 
+    /// # 参数
+    /// 
+    /// * `editor` - 编辑器实例
     pub async fn sync_to_remote(&self, editor: &ForgeAsyncRuntime) -> ForgeResult<()> {
         let doc = editor.get_state().doc();
         let tree = doc.get_inner().as_ref();
         Utils::apply_tree_to_yrs(self.awareness.clone(), tree).await?;
         Ok(())
+    }
+    pub async fn start(&mut self) {
+        self.provider.connect().await;
+        let nodes_map = self.awareness.read().await.doc().get_or_insert_map("nodes");
+        self.provider.subscription(nodes_map.observe_deep(move |txn, events| {
+            for event in events.iter() {
+                match event {
+                    yrs::types::Event::Array(array_event) => {
+                        // 更新了 标记数组 需要转换成 step
+                    },
+                    yrs::types::Event::Map(map_event) => {
+                        // 更新了 节点属性 需要转换成 step 或者 添加节点
+                    },
+                    _ => {},
+                }
+            }
+        }));
+
     }
 }
