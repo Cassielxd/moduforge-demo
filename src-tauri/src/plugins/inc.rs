@@ -115,7 +115,7 @@ impl IncStateField {
 
 #[async_trait]
 impl StateField for IncStateField {
-    async fn init(&self, _config: &StateConfig, _instance: Option<&State>) -> Arc<dyn Resource> {
+    async fn init(&self, _config: &StateConfig, _instance: &State) -> Arc<dyn Resource> {
         Arc::new(IncState)
     }
     async fn apply(
