@@ -39,7 +39,7 @@ pub struct CollabEditor {
     editor: ForgeAsyncRuntime,
     /// 协作编辑器提供者
     ///
-    pub sync_manager: CollabSyncManager,
+    sync_manager: CollabSyncManager,
 
     /// 编辑器配置选项
     ///
