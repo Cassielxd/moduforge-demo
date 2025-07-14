@@ -1,10 +1,11 @@
 use std::{
     ops::{Deref, DerefMut}, sync::Arc, time::Duration
 };
+use serde_json::Value;
 use tokio::sync::RwLock;
 
 use async_trait::async_trait;
-use mf_collab_client::{ provider::WebsocketProvider, types::SyncEvent, utils::Utils, yrs::{sync::{awareness::Event, Awareness}, Doc}, AwarenessRef
+use mf_collab_client::{ provider::WebsocketProvider, types::SyncEvent, utils::Utils, yrs::{sync::{awareness::Event, Awareness}, types::{Change, EntryChange}, Doc}, AwarenessRef
 };
 use mf_core::{
     async_runtime::ForgeAsyncRuntime, error_utils, extension::Extension, history_manager::HistoryManager, types::{Content, Extensions, HistoryEntryWithMeta, RuntimeOptions}, ForgeResult
@@ -244,13 +245,35 @@ impl CollabEditor {
 use mf_collab_client::yrs::{DeepObservable, Subscription};
 use tokio::sync::mpsc;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ChangeType {
+    /// Determines a change that resulted in adding a consecutive number of new elements:
+    /// - For [Array] it's a range of inserted elements.
+    /// - For [XmlElement] it's a range of inserted child XML nodes.
+    Added(Vec<Value>),
+    Removed(u32),
+    Retain(u32),
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum EntryChangeType {
+    /// Informs about a new value inserted under specified entry.
+    Inserted(Value),
+
+    /// Informs about a change of old value (1st field) to a new one (2nd field) under
+    /// a corresponding entry.
+    Updated(Value, Value),
+
+    /// Informs about a removal of a corresponding entry - contains a removed value.
+    Removed(Value),
+}
+
 /// 同步事件类型
 #[derive(Debug, Clone)]
 pub enum SyncEventType {
     /// 来自本地的事务
-    LocalTransaction(Transaction),
+    ArrayChange(Vec<Value>, Vec<ChangeType>),
     /// yrs 深度变化事件
-    YrsDeepChange(Vec<u8>), // 简化为字节数组，避免复杂的类型问题
+    MapChange(Vec<Value>, Vec<EntryChangeType>), // 简化为字节数组，避免复杂的类型问题
 }
 
 /// 协作同步管理器
@@ -258,7 +281,7 @@ pub struct CollabSyncManager {
     provider: WebsocketProvider,
     awareness: AwarenessRef,
     /// 事件发送器，用于处理同步事件
-    event_sender: Option<mpsc::UnboundedSender<SyncEventType>>,
+    event_sender: Option<mpsc::UnboundedSender<Vec<SyncEventType>>>,
 }
 
 impl CollabSyncManager {
@@ -316,7 +339,7 @@ impl CollabSyncManager {
     /// 专门监听 nodes 相关的变化，而不是整个文档
     async fn setup_yrs_listener(
         &mut self,
-        sender: mpsc::UnboundedSender<SyncEventType>,
+        sender: mpsc::UnboundedSender<Vec<SyncEventType>>,
     ) -> ForgeResult<()> {
         let awareness_lock = self.awareness.read().await;
         let doc = awareness_lock.doc();
@@ -328,19 +351,68 @@ impl CollabSyncManager {
         let sender_clone = sender.clone();
         self.provider.subscription(nodes_map.observe_deep(move |_txn, events| {
             let sender = sender_clone.clone();
-
+            let mut event_vec = Vec::new();
             // 检查是否有事件（使用 iter() 方法）
             let event_count = events.iter().count();
             for event in events.iter() {
+                //path 转换成数组
+                
+
                 match event {
                     mf_collab_client::yrs::types::Event::Array(array_event) => {
+                        let path = array_event.path().iter().map(|path| serde_json::to_value(path).unwrap()).collect::<Vec<serde_json::Value>>();
                         array_event.delta(_txn).iter().for_each(|delta| {
-                            println!("delta: {:?}", delta);
+                            
+                            // 将 delta 转换为 ChangeType
+                            let change_type = match delta {
+                                Change::Added(values) => ChangeType::Added(values.iter()
+                                .filter_map(|value| {
+                                    if let mf_collab_client::yrs::Value::Any(ref any) = value {
+                                        Utils::yrs_any_to_json_value(any)
+                                    } else {
+                                        None
+                                    }
+                                })
+                                .collect()),
+                                Change::Removed(count) => ChangeType::Removed(*count),
+                                Change::Retain(count) => ChangeType::Retain(*count),
+                            };
+                            event_vec.push(SyncEventType::ArrayChange(path.clone(), vec![change_type]));
+                            
                         });
                     }
                     mf_collab_client::yrs::types::Event::Map(map_event) => {
-                        map_event.keys(_txn).iter().for_each(|key| {
-                            println!("key: {:?}", key);
+                        map_event.keys(_txn).iter().for_each(|(key, value)| {
+                            let path = vec![serde_json::to_value(key).unwrap()];
+                            let change_type = match value {
+                                EntryChange::Inserted(value) => {
+                                    if let mf_collab_client::yrs::Value::Any(ref any) = value {
+                                        EntryChangeType::Inserted(Utils::yrs_any_to_json_value(any).unwrap())
+                                    } else {
+                                        // 处理非 Any 类型（可选：用默认值或跳过）
+                                        return;
+                                    }
+                                }
+                                EntryChange::Updated(value, value1) => {
+                                    if let (mf_collab_client::yrs::Value::Any(ref any0), mf_collab_client::yrs::Value::Any(ref any1)) = (value, value1) {
+                                        EntryChangeType::Updated(
+                                            Utils::yrs_any_to_json_value(any0).unwrap(),
+                                            Utils::yrs_any_to_json_value(any1).unwrap()
+                                        )
+                                    } else {
+                                        return;
+                                    }
+                                }
+                                EntryChange::Removed(value) => {
+                                    if let mf_collab_client::yrs::Value::Any(ref any) = value {
+                                        EntryChangeType::Removed(Utils::yrs_any_to_json_value(any).unwrap())
+                                    } else {
+                                        return;
+                                    }
+                                }
+                            };
+                            event_vec.push(SyncEventType::MapChange(path, vec![change_type]));
+                            
                         });
                     }
                     _ => {
@@ -348,11 +420,11 @@ impl CollabSyncManager {
                 }
             }
             
-            if event_count > 0 {
+            if event_vec.len() > 0 {
                 println!("检测到 nodes 深度变化: {} 个事件", event_count);
 
                 // 简化事件处理，只发送事件计数
-                if let Err(e) = sender.send(SyncEventType::YrsDeepChange(vec![event_count as u8])) {
+                if let Err(e) = sender.send(event_vec) {
                     eprintln!("发送 nodes 深度变化事件失败: {}", e);
                 }
             }
@@ -365,18 +437,18 @@ impl CollabSyncManager {
 
     /// 处理同步事件
     async fn handle_sync_event(
-        event: SyncEventType,
+        events: Vec<SyncEventType>,
         editor: Arc<RwLock<ForgeAsyncRuntime>>,
         awareness: AwarenessRef,
     ) -> ForgeResult<()> {
-        match event {
-            SyncEventType::LocalTransaction(transaction) => {
-                // 处理本地事务，同步到 yrs
-                Utils::apply_transaction_to_yrs(awareness, &transaction).await;
-            }
-            SyncEventType::YrsDeepChange(event_data) => {
-                // 处理 yrs 深度变化事件
-                Self::handle_yrs_deep_change(event_data, editor).await?;
+        for event in events {   
+            match event {
+                SyncEventType::ArrayChange(path, changes) => {
+                    println!("处理 ArrayChange 事件: {:?}", path);
+                }
+                SyncEventType::MapChange(path, changes) => {
+                    println!("处理 MapChange 事件: {:?}", path);
+                }
             }
         }
 
@@ -396,16 +468,6 @@ impl CollabSyncManager {
         Ok(())
     }
 
-    /// 发送本地事务到同步通道
-    pub async fn send_local_transaction(&self, transaction: Transaction) -> Result<(), String> {
-        if let Some(sender) = &self.event_sender {
-            sender.send(SyncEventType::LocalTransaction(transaction))
-                .map_err(|e| format!("发送本地事务失败: {}", e))?;
-        } else {
-            return Err("同步管理器尚未启动".to_string());
-        }
-        Ok(())
-    }
 
     /// 同步数据到远程
     ///
