@@ -897,6 +897,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctor"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4735f265ba6a1188052ca32d461028a7d1125868be18e287e756019da7607b5"
+dependencies = [
+ "ctor-proc-macro",
+ "dtor",
+]
+
+[[package]]
+name = "ctor-proc-macro"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f211af61d8efdd104f96e57adf5e426ba1bc3ed7a4ead616e15e5881fd79c4d"
+
+[[package]]
 name = "darling"
 version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1090,6 +1106,21 @@ checksum = "cd1511a7b6a56299bd043a9c167a6d2bfb37bf84a6dfceaba651168adfb43c87"
 dependencies = [
  "dtoa",
 ]
+
+[[package]]
+name = "dtor"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97cbdf2ad6846025e8e25df05171abfb30e3ababa12ee0a0e44b9bbe570633a8"
+dependencies = [
+ "dtor-proc-macro",
+]
+
+[[package]]
+name = "dtor-proc-macro"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7454e41ff9012c00d53cf7f475c5e3afa3b91b7c90568495495e8d9bf47a1055"
 
 [[package]]
 name = "dunce"
@@ -2618,12 +2649,11 @@ dependencies = [
 
 [[package]]
 name = "moduforge-collaboration-client"
-version = "0.4.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9bbcc2edcabd9768887b3987798d6017f76c3fd7cc955ee4035d696735caeea"
+version = "0.4.15"
 dependencies = [
  "anyhow",
  "chrono",
+ "ctor 0.4.2",
  "futures-util",
  "im",
  "moduforge-core",
@@ -2646,9 +2676,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-core"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9739812f9484b60ab872c63f398e40f4085950092d153b58042ea9db98b7906"
+version = "0.4.10"
 dependencies = [
  "anyhow",
  "async-channel",
@@ -2663,9 +2691,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-macros"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "438985714f123b49b65d3d7f2716add1061b72b009f52890ae706e5c2bb96756"
+version = "0.4.10"
 dependencies = [
  "anyhow",
  "moduforge-core",
@@ -2676,9 +2702,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-macros-derive"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc46b6e3ca33b5d4d6f1fe7d6cc0c7d8df18948fb09efc225c479730d95a8377"
+version = "0.4.10"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2687,9 +2711,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-model"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4fee1d90ee93f31d481bcebb903208879398cf631af2b6a258412f1ab2e1a44"
+version = "0.4.10"
 dependencies = [
  "anyhow",
  "im",
@@ -2704,9 +2726,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-rules-engine"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10bfe4f9ee39cad0535b2e7d5aa4bd91a79309b19fd88cbdf6fa04e9782618b6"
+version = "0.4.10"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -2728,9 +2748,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-rules-expression"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c45f85272a803490a4d8029c8f62aab7804a78404a457a1b6a279f71d443b310"
+version = "0.4.10"
 dependencies = [
  "ahash 0.8.12",
  "anyhow",
@@ -2756,9 +2774,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-rules-template"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afc334d75fd1bc782f72ce80a005efc89168b6a8b03530ae3301f42ba6c6d522"
+version = "0.4.10"
 dependencies = [
  "moduforge-rules-expression",
  "serde",
@@ -2768,9 +2784,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-state"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feb9c681b84c1b0ee2e79b22975bc8a260aaa2d3f737ee0ec1514849ad81802a"
+version = "0.4.10"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2778,6 +2792,7 @@ dependencies = [
  "im",
  "moduforge-model",
  "moduforge-transform",
+ "serde",
  "serde_json",
  "thiserror 2.0.12",
  "tracing",
@@ -2787,9 +2802,7 @@ dependencies = [
 
 [[package]]
 name = "moduforge-transform"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84c80ea533b3af8308d34e34649336a322b588f10b85003d509f9d15e6616393"
+version = "0.4.10"
 dependencies = [
  "anyhow",
  "im",
@@ -5331,7 +5344,7 @@ dependencies = [
  "anyhow",
  "brotli",
  "cargo_metadata",
- "ctor",
+ "ctor 0.2.9",
  "dunce",
  "glob",
  "html5ever",

@@ -1,10 +1,11 @@
 use dashmap::DashMap;
 
-use crate::{core::demo_editor::DemoEditor, ContextHelper};
+use crate::{types::EditorTrait, ContextHelper};
 
 pub mod editor;
 
 pub async fn init_contex() {
-    let map_p: DashMap<String, DemoEditor> = DashMap::new();
+    let map_p: DashMap<String, Box<dyn EditorTrait>> = DashMap::new();
     ContextHelper::set(map_p);
 }
+        

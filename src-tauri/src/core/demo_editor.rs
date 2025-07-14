@@ -3,8 +3,12 @@ use std::{
     sync::Arc,
 };
 
-use mf_core::{async_runtime::ForgeAsyncRuntime, types::RuntimeOptions, ForgeResult};
-use mf_state::{resource::Resource, resource_table::ResourceId};
+use async_trait::async_trait;
+use mf_core::{async_runtime::ForgeAsyncRuntime, history_manager::HistoryManager, types::{HistoryEntryWithMeta, RuntimeOptions}, ForgeResult};
+use mf_model::node_pool::NodePool;
+use mf_state::{resource::Resource, resource_table::ResourceId, transaction::Command, State, Transaction};
+
+use crate::types::EditorTrait;
 
 pub struct DemoEditorOptions {
     pub editor_options: RuntimeOptions,
@@ -20,6 +24,48 @@ pub struct DemoEditor {
     ///
     /// 包含创建和运行编辑器所需的各项配置，如存储接口和规则加载器
     options: DemoEditorOptions,
+}
+#[async_trait]
+impl EditorTrait for DemoEditor {
+    async fn get_history_manager(&self) -> Option<&HistoryManager<HistoryEntryWithMeta>> {
+        Some(self.editor.get_history_manager())
+    }
+    async fn get_state(&self) -> Arc<State> {
+        self.editor.get_state().clone()
+    }
+    async fn doc(&self) -> Arc<NodePool> {
+        self.editor.doc()
+    }
+    async fn command(
+        &mut self,
+        command: Arc<dyn Command>,
+    ) -> ForgeResult<()>{
+        self.editor.command(command).await
+    }
+
+     async fn command_with_meta(
+        &mut self,
+        command: Arc<dyn Command>,
+        description: String,
+        meta: serde_json::Value,
+    ) -> ForgeResult<()> {
+        self.editor.command_with_meta(command, description, meta).await
+    }
+     async fn dispatch_flow(
+        &mut self,
+        transaction: Transaction,
+    ) -> ForgeResult<()> {
+        self.editor.dispatch_flow(transaction).await
+    }
+     async fn dispatch_flow_with_meta(
+        &mut self,
+        transaction: Transaction,
+        description: String,
+        meta: serde_json::Value,
+    ) -> ForgeResult<()> {
+        self.editor.dispatch_flow_with_meta(transaction, description, meta).await
+    }
+    
 }
 
 impl DemoEditor {

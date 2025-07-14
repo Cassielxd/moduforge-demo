@@ -28,12 +28,12 @@ pub struct GetDataTreeRequest {
 pub async fn get_inc_data(
     Path(editor_name): Path<String>,
 ) -> ResponseResult<Option<Arc<Operations>>> {
-    let editor = ContextHelper::get_demo_editor(&editor_name);
+    let editor = ContextHelper::get_editor(&editor_name);
     if editor.is_none() {
         return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
     }
     let editor = editor.unwrap();
-    let manager = editor.get_state().resource_manager();
+    let manager = editor.get_state().await.resource_manager();
     let operations = manager
         .resource_table
         .take::<Operations>("inc_data".to_string());
@@ -42,12 +42,12 @@ pub async fn get_inc_data(
 
 /// 获取数据树
 pub async fn get_data_tree(Json(param): Json<GetDataTreeRequest>) -> ResponseResult<GcxmTreeItem> {
-    let editor = ContextHelper::get_demo_editor(&param.editor_name);
+    let editor = ContextHelper::get_editor(&param.editor_name);
     if editor.is_none() {
         return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
     }
     let editor = editor.unwrap();
-    let doc = editor.doc();
+    let doc = editor.doc().await;
     let node = doc.get_node(&param.id);
     if node.is_none() {
         return Err(AppError(anyhow::anyhow!("节点不存在".to_string())));
@@ -72,12 +72,16 @@ pub struct GetHistoryVersionCammand {
 pub async fn get_history(
     Json(param): Json<GetHistoryVersionCammand>,
 ) -> ResponseResult<Vec<HistoryEntry>> {
-    let editor = ContextHelper::get_demo_editor(&param.editor_name);
+    let editor = ContextHelper::get_editor(&param.editor_name);
     if editor.is_none() {
         return Err(AppError(anyhow::anyhow!("工程项目不存在".to_string())));
     }
     let editor = editor.unwrap();
-    let history_manager = editor.get_history_manager();
+    let history_manager = editor.get_history_manager().await;
+    if history_manager.is_none() {
+        return Err(AppError(anyhow::anyhow!("历史记录不存在".to_string())));
+    }
+    let history_manager = history_manager.unwrap();
     let history_version = history_manager.get_history();
     let history = history_version;
     let mut history_result = history

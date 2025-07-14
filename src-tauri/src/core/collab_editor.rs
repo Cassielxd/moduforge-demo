@@ -1,20 +1,21 @@
 use std::{
-    ops::{Deref, DerefMut},
-    sync::Arc,
-    time::Duration,
+    ops::{Deref, DerefMut}, sync::Arc, time::Duration
 };
+use tokio::sync::RwLock;
 
-use mf_collab_client::{
-    mapping::Mapper, provider::WebsocketProvider, types::SyncEvent, utils::Utils, yrs::{self, sync::Awareness, DeepObservable, Doc}, AwarenessRef
+use async_trait::async_trait;
+use mf_collab_client::{ provider::WebsocketProvider, types::SyncEvent, utils::Utils, yrs::{sync::{awareness::Event, Awareness}, Doc}, AwarenessRef
 };
 use mf_core::{
-    async_runtime::ForgeAsyncRuntime,
-    error_utils,
-    types::{Content, RuntimeOptions},
-    ForgeResult,
+    async_runtime::ForgeAsyncRuntime, error_utils, extension::Extension, history_manager::HistoryManager, types::{Content, Extensions, HistoryEntryWithMeta, RuntimeOptions}, ForgeResult
 };
 use mf_model::node_pool::NodePool;
-use mf_state::{resource::Resource, resource_table::ResourceId};
+use mf_state::{plugin::{Plugin, PluginSpec}, resource::Resource, resource_table::ResourceId, transaction::Command, State, Transaction};
+
+
+
+
+use crate::{plugins::collab::CollabStateField, types::EditorTrait};
 
 pub struct CollabEditorOptions {
     pub editor_options: RuntimeOptions,
@@ -35,10 +36,11 @@ pub struct CollabEditor {
     /// 内部异步编辑器实例，处理底层编辑操作
     ///
     /// 负责状态管理、撤销/重做操作以及资源跟踪等基础功能
-    editor: ForgeAsyncRuntime,
+    /// 使用 Arc<RwLock> 支持并发访问
+    editor: Arc<RwLock<ForgeAsyncRuntime>>,
     /// 协作编辑器提供者
     ///
-    sync_manager: CollabSyncManager,
+    sync_manager: Arc<CollabSyncManager>,
 
     /// 编辑器配置选项
     ///
@@ -46,11 +48,65 @@ pub struct CollabEditor {
     options: CollabEditorOptions,
 }
 
+#[async_trait]
+impl EditorTrait for CollabEditor {
+
+    async fn get_state(&self) -> Arc<State> {
+        // 同样的问题，需要异步访问
+        panic!("get_state 需要异步访问，请使用 get_state_async")
+    }
+
+    async fn doc(&self) -> Arc<NodePool> {
+        // 同样的问题，需要异步访问
+        panic!("doc 需要异步访问，请使用 doc_async")
+    }
+
+    async fn command(
+        &mut self,
+        command: Arc<dyn Command>,
+    ) -> ForgeResult<()>{
+        let mut editor = self.editor.write().await;
+        editor.command(command).await
+    }
+
+    async fn command_with_meta(
+        &mut self,
+        command: Arc<dyn Command>,
+        description: String,
+        meta: serde_json::Value,
+    ) -> ForgeResult<()> {
+        let mut editor = self.editor.write().await;
+        editor.command_with_meta(command, description, meta).await
+    }
+
+    async fn dispatch_flow(
+        &mut self,
+        transaction: Transaction,
+    ) -> ForgeResult<()> {
+        let mut editor = self.editor.write().await;
+        editor.dispatch_flow(transaction).await
+    }
+
+    async fn dispatch_flow_with_meta(
+        &mut self,
+        transaction: Transaction,
+        description: String,
+        meta: serde_json::Value,
+    ) -> ForgeResult<()> {
+        let mut editor = self.editor.write().await;
+        editor.dispatch_flow_with_meta(transaction, description, meta).await
+    }
+    
+}
 impl CollabEditor {
     pub async fn create(options: CollabEditorOptions) -> ForgeResult<Self> {
+        // 创建协作同步管理器
         let mut sync_manager = CollabSyncManager::new(&options).await?;
+        // 订阅同步事件
         let mut event_rx = sync_manager.provider.subscribe_sync_events().unwrap();
+        // 启动协作同步
         sync_manager.start().await;
+        // 等待初始化完成
         // 设置超时 10 秒
         let timeout = tokio::time::timeout(Duration::from_secs(10), async {
             while let Ok(event) = event_rx.recv().await {
@@ -61,13 +117,28 @@ impl CollabEditor {
             Err(error_utils::event_error("服务器异常，请检查服务器是否启动"))
         })
         .await?;
+        // 创建协作扩展
+        let mut ext =Extension::new();
+        ext.add_plugin({
+            Arc::new(Plugin::new(PluginSpec{
+                state_field: Some(Arc::new(CollabStateField::new(sync_manager.awareness.clone()))),
+                key:("collab".to_string(),"协作".to_string()),
+                tr: None,
+                priority: 0,
+            }))
+        });
+        // 添加协作扩展
+        let mut options = options;
+        options.editor_options = options.editor_options.add_extension(Extensions::E(ext));
+        // 创建编辑器
         let editor = match timeout {
             Ok(true) => {
                 //有数据 反向同步数据 并创建 编辑器
                 let awareness_lock = sync_manager.awareness.read().await;
                 //把 远程的 文档 转换成 树
-                match Mapper::yrs_doc_to_tree(awareness_lock.doc()) {
+                match Utils::apply_yrs_to_tree(awareness_lock.doc()) {
                     Ok(tree) => {
+                        println!("有数据 反向同步数据 并创建 编辑器");
                         //转换成功
                         let pool = NodePool::new(Arc::new(tree)).as_ref().clone();
                         let options = options
@@ -77,6 +148,7 @@ impl CollabEditor {
                         ForgeAsyncRuntime::create(options).await?
                     }
                     Err(_) => {
+                        println!("转换失败 创建一个本地编辑器 并同步数据到远程1");
                         //转换失败 创建一个本地编辑器 并同步数据到远程
                         let ed = ForgeAsyncRuntime::create(options.editor_options.clone()).await?;
                         sync_manager.sync_to_remote(&ed).await?;
@@ -84,7 +156,9 @@ impl CollabEditor {
                     }
                 }
             }
+            
             Ok(false) => {
+                println!("没有数据 创建一个本地编辑器 并同步数据到远程2");
                 //没有数据 创建一个本地编辑器 并同步数据到远程
                 let ed = ForgeAsyncRuntime::create(options.editor_options.clone()).await?;
                 sync_manager.sync_to_remote(&ed).await?;
@@ -95,11 +169,24 @@ impl CollabEditor {
             }
         };
 
-        Ok(Self {
-            editor,
+        let editor_arc = Arc::new(RwLock::new(editor));
+
+        let mut collab_editor = Self {
+            editor: editor_arc.clone(),
             options,
-            sync_manager,
-        })
+            sync_manager: Arc::new(sync_manager),
+        };
+
+        // 启动同步管理器，传入编辑器引用
+        if let Err(e) = Arc::get_mut(&mut collab_editor.sync_manager)
+            .unwrap()
+            .start_with_editor(editor_arc)
+            .await
+        {
+            eprintln!("启动同步管理器失败: {}", e);
+        }
+
+        Ok(collab_editor)
     }
 
     pub fn get_options(&self) -> &CollabEditorOptions {
@@ -107,49 +194,85 @@ impl CollabEditor {
     }
 
     pub fn get_resource<T: Resource>(&self, rid: ResourceId) -> Option<Arc<T>> {
+        // 注意：这里需要异步访问 editor，但为了保持接口兼容性，暂时 panic
+        panic!("get_resource 需要异步访问，请使用 get_resource_async")
+    }
+
+    /// 异步获取资源
+    pub async fn get_resource_async<T: Resource>(&self, rid: ResourceId) -> Option<Arc<T>> {
         // 获取编辑器状态
-        // 编辑器状态包含所有运行时资源和配置
-        let state = self.editor.get_state();
+        let editor = self.editor.read().await;
+        let state = editor.get_state();
 
         // 获取资源管理器
-        // 资源管理器负责管理系统中所有注册的资源
         let resource_manager = state.resource_manager();
 
         // 从资源表中获取指定类型和ID的资源
-        // 如果资源不存在或类型不匹配，将返回错误
         resource_manager.resource_table.get::<T>(rid)
     }
-}
-impl Deref for CollabEditor {
-    type Target = ForgeAsyncRuntime;
 
-    fn deref(&self) -> &Self::Target {
-        &self.editor
+    /// 异步获取编辑器的只读访问
+    pub async fn get_editor(&self) -> tokio::sync::RwLockReadGuard<'_, ForgeAsyncRuntime> {
+        self.editor.read().await
+    }
+
+    /// 异步获取编辑器的可写访问
+    pub async fn get_editor_mut(&self) -> tokio::sync::RwLockWriteGuard<'_, ForgeAsyncRuntime> {
+        self.editor.write().await
+    }
+
+    /// 异步获取历史管理器
+    pub async fn get_history_manager_async(&self) -> &HistoryManager<HistoryEntryWithMeta> {
+        // 注意：这里仍然有生命周期问题，需要重新设计
+        // 暂时返回一个错误提示
+        panic!("需要重新设计异步访问模式")
+    }
+
+    /// 异步获取状态
+    pub async fn get_state_async(&self) -> Arc<State> {
+        let editor = self.editor.read().await;
+        editor.get_state().clone()
+    }
+
+    /// 异步获取文档
+    pub async fn doc_async(&self) -> Arc<NodePool> {
+        let editor = self.editor.read().await;
+        editor.doc()
     }
 }
 
-impl DerefMut for CollabEditor {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.editor
-    }
+use mf_collab_client::yrs::{DeepObservable, Subscription};
+use tokio::sync::mpsc;
+
+/// 同步事件类型
+#[derive(Debug, Clone)]
+pub enum SyncEventType {
+    /// 来自本地的事务
+    LocalTransaction(Transaction),
+    /// yrs 深度变化事件
+    YrsDeepChange(Vec<u8>), // 简化为字节数组，避免复杂的类型问题
 }
 
+/// 协作同步管理器
 pub struct CollabSyncManager {
     provider: WebsocketProvider,
     awareness: AwarenessRef,
+    /// 事件发送器，用于处理同步事件
+    event_sender: Option<mpsc::UnboundedSender<SyncEventType>>,
 }
 
 impl CollabSyncManager {
     /// 创建协作同步管理器
-    /// 
+    ///
     /// 初始化协作同步管理器，包括创建文档和意识
-    /// 
+    ///
     /// # 参数
-    /// 
+    ///
     /// * `options` - 协作编辑器选项
     pub async fn new(options: &CollabEditorOptions) -> ForgeResult<Self> {
         let doc = Doc::new();
         let awareness: AwarenessRef = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
+
         Ok(Self {
             provider: WebsocketProvider::new(
                 options.server_url.to_string(),
@@ -158,14 +281,138 @@ impl CollabSyncManager {
             )
             .await,
             awareness,
+            event_sender: None
         })
     }
+
+    /// 启动同步管理器，设置监听器和事件处理
+    pub async fn start_with_editor(&mut self, editor: Arc<RwLock<ForgeAsyncRuntime>>) -> ForgeResult<()> {
+        // 连接到服务器
+        self.provider.connect().await;
+
+        // 创建事件通道
+        let (sender, mut receiver) = mpsc::unbounded_channel();
+        self.event_sender = Some(sender.clone());
+
+        // 设置 yrs 深度监听器
+        self.setup_yrs_listener(sender.clone()).await?;
+
+        // 启动事件处理循环
+        let awareness_clone = self.awareness.clone();
+        let editor_clone = editor.clone();
+        tokio::spawn(async move {
+            while let Some(event) = receiver.recv().await {
+                if let Err(e) = Self::handle_sync_event(event, editor_clone.clone(), awareness_clone.clone()).await {
+                    eprintln!("处理同步事件时出错: {}", e);
+                }
+            }
+        });
+
+        println!("协作同步管理器已启动");
+        Ok(())
+    }
+
+    /// 设置 yrs nodes 监听器
+    /// 专门监听 nodes 相关的变化，而不是整个文档
+    async fn setup_yrs_listener(
+        &mut self,
+        sender: mpsc::UnboundedSender<SyncEventType>,
+    ) -> ForgeResult<()> {
+        let awareness_lock = self.awareness.read().await;
+        let doc = awareness_lock.doc();
+
+        // 获取或创建 nodes 映射
+        let nodes_map = doc.get_or_insert_map("nodes");
+
+        // 使用 observe_deep 监听 nodes 映射的深度变化
+        let sender_clone = sender.clone();
+        self.provider.subscription(nodes_map.observe_deep(move |_txn, events| {
+            let sender = sender_clone.clone();
+
+            // 检查是否有事件（使用 iter() 方法）
+            let event_count = events.iter().count();
+            for event in events.iter() {
+                match event {
+                    mf_collab_client::yrs::types::Event::Array(array_event) => {
+                        array_event.delta(_txn).iter().for_each(|delta| {
+                            println!("delta: {:?}", delta);
+                        });
+                    }
+                    mf_collab_client::yrs::types::Event::Map(map_event) => {
+                        map_event.keys(_txn).iter().for_each(|key| {
+                            println!("key: {:?}", key);
+                        });
+                    }
+                    _ => {
+                    }
+                }
+            }
+            
+            if event_count > 0 {
+                println!("检测到 nodes 深度变化: {} 个事件", event_count);
+
+                // 简化事件处理，只发送事件计数
+                if let Err(e) = sender.send(SyncEventType::YrsDeepChange(vec![event_count as u8])) {
+                    eprintln!("发送 nodes 深度变化事件失败: {}", e);
+                }
+            }
+        }));
+
+
+        println!("yrs nodes 监听器已设置");
+        Ok(())
+    }
+
+    /// 处理同步事件
+    async fn handle_sync_event(
+        event: SyncEventType,
+        editor: Arc<RwLock<ForgeAsyncRuntime>>,
+        awareness: AwarenessRef,
+    ) -> ForgeResult<()> {
+        match event {
+            SyncEventType::LocalTransaction(transaction) => {
+                // 处理本地事务，同步到 yrs
+                Utils::apply_transaction_to_yrs(awareness, &transaction).await;
+            }
+            SyncEventType::YrsDeepChange(event_data) => {
+                // 处理 yrs 深度变化事件
+                Self::handle_yrs_deep_change(event_data, editor).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// 处理 yrs 深度变化事件
+    async fn handle_yrs_deep_change(
+        event_data: Vec<u8>,
+        editor: Arc<RwLock<ForgeAsyncRuntime>>,
+    ) -> ForgeResult<()> {
+        println!("处理 yrs 深度变化事件: {} 字节数据", event_data.len());
+
+        // TODO: 实现具体的 yrs 事件到本地事务的转换逻辑
+        // 这里需要根据实际的 yrs 事件格式来解析和转换
+
+        Ok(())
+    }
+
+    /// 发送本地事务到同步通道
+    pub async fn send_local_transaction(&self, transaction: Transaction) -> Result<(), String> {
+        if let Some(sender) = &self.event_sender {
+            sender.send(SyncEventType::LocalTransaction(transaction))
+                .map_err(|e| format!("发送本地事务失败: {}", e))?;
+        } else {
+            return Err("同步管理器尚未启动".to_string());
+        }
+        Ok(())
+    }
+
     /// 同步数据到远程
-    /// 
+    ///
     /// 将编辑器中的数据同步到远程服务器
-    /// 
+    ///
     /// # 参数
-    /// 
+    ///
     /// * `editor` - 编辑器实例
     pub async fn sync_to_remote(&self, editor: &ForgeAsyncRuntime) -> ForgeResult<()> {
         let doc = editor.get_state().doc();
@@ -173,22 +420,8 @@ impl CollabSyncManager {
         Utils::apply_tree_to_yrs(self.awareness.clone(), tree).await?;
         Ok(())
     }
+
     pub async fn start(&mut self) {
         self.provider.connect().await;
-        let nodes_map = self.awareness.read().await.doc().get_or_insert_map("nodes");
-        self.provider.subscription(nodes_map.observe_deep(move |txn, events| {
-            for event in events.iter() {
-                match event {
-                    yrs::types::Event::Array(array_event) => {
-                        // 更新了 标记数组 需要转换成 step
-                    },
-                    yrs::types::Event::Map(map_event) => {
-                        // 更新了 节点属性 需要转换成 step 或者 添加节点
-                    },
-                    _ => {},
-                }
-            }
-        }));
-
     }
 }

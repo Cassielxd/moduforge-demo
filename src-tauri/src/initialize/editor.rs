@@ -7,7 +7,7 @@ use mf_core::{
 use mf_state::plugin::{Plugin, PluginSpec};
 
 use crate::{
-    core::demo_editor::{DemoEditor, DemoEditorOptions},
+    core::{collab_editor::{CollabEditor, CollabEditorOptions}, demo_editor::{DemoEditor, DemoEditorOptions}},
     marks, middleware,
     nodes::{
         fbfx_csxm::{init_fbfx_csxm_fields, CSXM_STR, DE_STR, FBFX_STR},
@@ -20,6 +20,37 @@ use crate::{
 pub async fn init_editor(options: DemoEditorOptions) -> DemoEditor {
     DemoEditor::create(options).await.unwrap()
 }
+
+//获取编辑器
+pub async fn init_collab_editor(options: CollabEditorOptions) -> CollabEditor {
+    match CollabEditor::create(options).await {
+        Ok(editor) => editor,
+        Err(e) => {
+            println!("创建编辑器失败: {}", e);
+            panic!("创建编辑器失败: {}", e);
+        }
+    }
+}
+
+//获取编辑器配置
+pub async fn init_collab_options(create_callback: Arc<dyn NodePoolFnTrait>,room_name:String) -> CollabEditorOptions {
+    let mut builder = EditorOptionsBuilder::new();
+    builder = builder
+        .content(Content::NodePoolFn(create_callback))
+        // 设置历史记录限制
+        .history_limit(20)
+        // 添加扩展
+        .extensions(init_extension())
+        // 添加中间件
+        .add_middleware(middleware::collect_fbfx_csxm::CollectFbfxCsxmMiddleware);
+    let options = builder.build();
+    CollabEditorOptions {
+        editor_options: options,
+        server_url: "ws://127.0.0.1:8080/collaboration".to_string(),
+        room_name: room_name,
+    }
+}
+
 //获取编辑器配置
 pub async fn init_options(create_callback: Arc<dyn NodePoolFnTrait>) -> DemoEditorOptions {
     let mut builder = EditorOptionsBuilder::new();
