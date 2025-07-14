@@ -444,10 +444,36 @@ impl CollabSyncManager {
         for event in events {   
             match event {
                 SyncEventType::ArrayChange(path, changes) => {
-                    println!("处理 ArrayChange 事件: {:?}", path);
+                    // path 数组第一个对应的 是 节点id
+                    for change in changes {
+                        match change {
+                            ChangeType::Added(values) => {
+                                println!("处理 Added 事件: {:?}", values);
+                                // 转换成mark
+                            }
+                            ChangeType::Removed(index) => {
+                                println!("处理 Removed 事件: {:?}", index);
+                            }
+                            ChangeType::Retain(index) => {
+                                println!("处理 Retain 事件: {:?}", index);
+                            }
+                        }
+                    }
                 }
                 SyncEventType::MapChange(path, changes) => {
-                    println!("处理 MapChange 事件: {:?}", path);
+                    for change in changes {
+                        match change {
+                            EntryChangeType::Inserted(value) => {
+                                println!("处理 Inserted 事件: {:?}", value);
+                            }
+                            EntryChangeType::Updated(value, value1) => {
+                                println!("处理 Updated 事件: {:?}", value);
+                            }
+                            EntryChangeType::Removed(value) => {
+                                println!("处理 Removed 事件: {:?}", value);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -455,18 +481,6 @@ impl CollabSyncManager {
         Ok(())
     }
 
-    /// 处理 yrs 深度变化事件
-    async fn handle_yrs_deep_change(
-        event_data: Vec<u8>,
-        editor: Arc<RwLock<ForgeAsyncRuntime>>,
-    ) -> ForgeResult<()> {
-        println!("处理 yrs 深度变化事件: {} 字节数据", event_data.len());
-
-        // TODO: 实现具体的 yrs 事件到本地事务的转换逻辑
-        // 这里需要根据实际的 yrs 事件格式来解析和转换
-
-        Ok(())
-    }
 
 
     /// 同步数据到远程
